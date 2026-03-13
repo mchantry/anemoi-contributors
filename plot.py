@@ -53,4 +53,5 @@ fig.update_layout(
     legend_title="Organisation",
 )
 
+fig.write_html("docs/index.html")
 fig.show()
