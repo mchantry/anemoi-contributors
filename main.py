@@ -110,51 +110,58 @@ def get_reviews_last_3_months(repo, github_to_org):
 
     return org_total_review_count, org_unique_review_count
 
-def main(REPO_NAME):
-    # Authenticate with GitHub
-    g = Github(GITHUB_TOKEN)
-    
-    # Load GitHub-to-organization mapping
-    github_to_org = load_github_to_org_mapping()
-    
+def main(REPO_NAME, g, github_to_org):
     # Get the repository
     repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
 
-    print(f"------------------------------")    
+    print(f"------------------------------")
     print(f" {REPO_NAME}:")
-    print(f"------------------------------")    
+    print(f"------------------------------")
 
-    # Fetch contributors
-    #contributors = repo.get_contributors()
-    #print(f"Contributors to {REPO_NAME}:")
-    #for contributor in contributors:
-    #    print(f"- {contributor.login}: {contributor.contributions} contributions")
-    
     # Fetch issues created in the last 3 months
     org_issue_count = get_issues_last_3_months(repo, github_to_org)
     print(f"\nIssues created in {REPO_NAME} in the last 3 months by Organization (sorted):")
     for org, count in org_issue_count.most_common():
         print(f"- {org}: {count} issues")
-    
+
     # Fetch PRs created in the last 3 months
     org_pr_count = get_pull_requests_last_3_months(repo, github_to_org)
     print(f"\nPull Requests merged in {REPO_NAME} in the last 3 months by Organization (sorted):")
     for org, count in org_pr_count.most_common():
         print(f"- {org}: {count} PRs")
-    
+
     # Fetch reviews performed in the last 3 months
     org_total_review_count, org_unique_review_count = get_reviews_last_3_months(repo, github_to_org)
     print(f"\nCode Reviews performed in {REPO_NAME} in the last 3 months by Organization (sorted):")
     for org, count in org_total_review_count.most_common():
         print(f"- {org}: {count} total reviews")
-    
+
     print(f"\nUnique Code Reviews by Organization in {REPO_NAME} in the last 3 months (sorted):")
     for org, count in org_unique_review_count.most_common():
         print(f"- {org}: {count} unique reviews")
 
+    return {
+        "issues": dict(org_issue_count),
+        "pull_requests": dict(org_pr_count),
+        "total_reviews": dict(org_total_review_count),
+        "unique_reviews": dict(org_unique_review_count),
+    }
+
 if __name__ == "__main__":
+    g = Github(GITHUB_TOKEN)
+    github_to_org = load_github_to_org_mapping()
+
     repo_list = ["anemoi-core", "anemoi-datasets",
                  "anemoi-inference", "anemoi-transform",
                  "anemoi-utils"]
+
+    results = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "repos": {},
+    }
     for REPO_NAME in repo_list:
-        main(REPO_NAME)
+        results["repos"][REPO_NAME] = main(REPO_NAME, g, github_to_org)
+
+    with open("results.json", "w") as f:
+        json.dump(results, f, indent=2)
+    print("\nResults saved to results.json")
