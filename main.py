@@ -50,17 +50,33 @@ def get_issues_last_3_months(repo, github_to_org):
     return org_issue_count
 
 def get_pull_requests_last_3_months(repo, github_to_org):
-    """Fetch merged pull requests created in the last 3 months and aggregate by organization."""
+    """Fetch merged pull requests in the last 3 months.
+    Each org is counted once per PR, even if multiple authors from that org contributed."""
     three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
     pulls = repo.get_pulls(state="all")
-    user_pr_count = Counter()
+    org_pr_count = Counter()
 
     for pr in pulls:
-        if pr.created_at >= three_months_ago and pr.merged:  # Check if PR is merged
-            user_pr_count[pr.user.login] += 1
+        if pr.created_at < three_months_ago or not pr.merged:
+            continue
 
-    # Aggregate by organization
-    org_pr_count = aggregate_by_organization(user_pr_count, github_to_org)
+        # Collect all unique authors: PR opener + all commit authors
+        authors = {pr.user.login}
+        for commit in pr.get_commits():
+            if commit.author:
+                authors.add(commit.author.login)
+
+        # Map to orgs, deduplicating per PR so each org is counted at most once
+        orgs = set()
+        for user in authors:
+            org = github_to_org.get(user, "Unknown")
+            if org == "Unknown":
+                print(f"Unknown GitHub user: {user}")
+            orgs.add(org)
+
+        for org in orgs:
+            org_pr_count[org] += 1
+
     return org_pr_count
 
 def get_reviews_last_3_months(repo, github_to_org):
