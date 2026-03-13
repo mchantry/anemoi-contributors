@@ -7,38 +7,36 @@ with open("results.json") as f:
     data = json.load(f)
 
 repos = list(data["repos"].keys())
-metrics = [
-    ("issues", "Issues"),
-    ("pull_requests", "Pull Requests"),
-    ("total_reviews", "Total Reviews"),
-    ("unique_reviews", "Unique Reviews"),
-]
+metric_keys  = ["issues", "pull_requests", "total_reviews", "unique_reviews"]
+metric_labels = ["Issues", "PRs", "Total Reviews", "Unique Reviews"]
 
 # Collect all orgs across all repos and metrics
 all_orgs = set()
 for repo_data in data["repos"].values():
-    for metric, _ in metrics:
-        all_orgs.update(repo_data[metric].keys())
+    for key in metric_keys:
+        all_orgs.update(repo_data[key].keys())
 all_orgs = sorted(all_orgs)
 
 colors = px.colors.qualitative.Plotly
 color_map = {org: colors[i % len(colors)] for i, org in enumerate(all_orgs)}
 
-fig = make_subplots(rows=2, cols=2, subplot_titles=[title for _, title in metrics])
+cols = 3
+rows = -(-len(repos) // cols)  # ceiling division
+fig = make_subplots(rows=rows, cols=cols, subplot_titles=repos)
 
-for idx, (metric, title) in enumerate(metrics):
-    row = idx // 2 + 1
-    col = idx % 2 + 1
+for repo_idx, repo in enumerate(repos):
+    row = repo_idx // cols + 1
+    col = repo_idx % cols + 1
 
     for org in all_orgs:
-        counts = [data["repos"][repo].get(metric, {}).get(org, 0) for repo in repos]
+        counts = [data["repos"][repo].get(key, {}).get(org, 0) for key in metric_keys]
         fig.add_trace(
             go.Bar(
                 name=org,
-                x=repos,
+                x=metric_labels,
                 y=counts,
                 legendgroup=org,
-                showlegend=(idx == 0),  # show legend entry only once
+                showlegend=(repo_idx == 0),
                 hovertemplate=f"{org}: %{{y}}<extra></extra>",
                 marker_color=color_map[org],
             ),
@@ -51,6 +49,18 @@ fig.update_layout(
     title=f"Anemoi Contributors (last 3 months) — {data['generated_at'][:10]}",
     height=700,
     legend_title="Organisation",
+    updatemenus=[
+        dict(
+            type="buttons",
+            direction="left",
+            x=0.0,
+            y=1.12,
+            buttons=[
+                dict(label="Counts", method="relayout", args=[{"barnorm": ""}]),
+                dict(label="Percentage", method="relayout", args=[{"barnorm": "percent"}]),
+            ],
+        )
+    ],
 )
 
 plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
