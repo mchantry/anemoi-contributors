@@ -53,5 +53,37 @@ fig.update_layout(
     legend_title="Organisation",
 )
 
-fig.write_html("docs/index.html")
+plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
+
+html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Anemoi Contributors</title>
+  <style>
+    body {{ font-family: sans-serif; max-width: 1100px; margin: 40px auto; padding: 0 20px; color: #333; }}
+    h2 {{ margin-top: 2em; }}
+    ul {{ line-height: 1.8; }}
+  </style>
+</head>
+<body>
+  {plot_div}
+
+  <h2>Methodology</h2>
+  <p>Data collected from the GitHub API via PyGithub, covering activity in the 90 days prior to {data['generated_at'][:10]}
+  across the following repositories: {", ".join(repos)}.</p>
+  <ul>
+    <li><strong>Issues:</strong> count of issues opened, grouped by the organisation of the issue author.</li>
+    <li><strong>Pull Requests:</strong> count of merged PRs where an organisation had at least one commit author.
+    Each organisation is counted at most once per PR, even if multiple members contributed commits.</li>
+    <li><strong>Total Reviews:</strong> all review submissions on PRs created in the period, grouped by the reviewer's organisation.</li>
+    <li><strong>Unique Reviews:</strong> as above, but each reviewer is counted at most once per PR.</li>
+  </ul>
+  <p>Organisation attribution is based on a manually maintained mapping of GitHub usernames to organisations.</p>
+</body>
+</html>"""
+
+with open("docs/index.html", "w") as f:
+    f.write(html)
+
 fig.show()
