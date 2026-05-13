@@ -1,5 +1,6 @@
 from github import Github
 from datetime import datetime, timedelta, timezone
+import argparse
 import os
 import json
 from dotenv import load_dotenv
@@ -35,9 +36,9 @@ def get_contributors(repo):
     contributors = repo.get_contributors()
     return contributors
 
-def get_issues_last_3_months(repo, github_to_org):
-    """Fetch issues created in the last 3 months and aggregate by organization."""
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
+def get_issues_last_n_months(repo, github_to_org, months):
+    """Fetch issues created in the last N months and aggregate by organization."""
+    three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
     issues = repo.get_issues(state="all", since=three_months_ago)
     user_issue_count = Counter()
 
@@ -49,10 +50,10 @@ def get_issues_last_3_months(repo, github_to_org):
     org_issue_count = aggregate_by_organization(user_issue_count, github_to_org)
     return org_issue_count
 
-def get_pull_requests_last_3_months(repo, github_to_org):
-    """Fetch merged pull requests in the last 3 months.
+def get_pull_requests_last_n_months(repo, github_to_org, months):
+    """Fetch merged pull requests in the last N months.
     Each org is counted once per PR, even if multiple authors from that org contributed."""
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
+    three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
     pulls = repo.get_pulls(state="all")
     org_pr_count = Counter()
 
@@ -79,14 +80,14 @@ def get_pull_requests_last_3_months(repo, github_to_org):
 
     return org_pr_count
 
-def get_reviews_last_3_months(repo, github_to_org):
+def get_reviews_last_n_months(repo, github_to_org, months):
     """
-    Fetch code reviews performed in the last 3 months and calculate both:
+    Fetch code reviews performed in the last N months and calculate both:
     - Total reviews (all reviews by all users)
     - Unique reviews (1 review per PR per user)
     Aggregate both by organization.
     """
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
+    three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
     pulls = repo.get_pulls(state="all")
     user_total_review_count = Counter()
     user_unique_review_count = Counter()
@@ -110,7 +111,7 @@ def get_reviews_last_3_months(repo, github_to_org):
 
     return org_total_review_count, org_unique_review_count
 
-def main(REPO_NAME, g, github_to_org):
+def main(REPO_NAME, g, github_to_org, months):
     # Get the repository
     repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
 
@@ -118,25 +119,25 @@ def main(REPO_NAME, g, github_to_org):
     print(f" {REPO_NAME}:")
     print(f"------------------------------")
 
-    # Fetch issues created in the last 3 months
-    org_issue_count = get_issues_last_3_months(repo, github_to_org)
-    print(f"\nIssues created in {REPO_NAME} in the last 3 months by Organization (sorted):")
+    # Fetch issues created in the last N months
+    org_issue_count = get_issues_last_n_months(repo, github_to_org, months)
+    print(f"\nIssues created in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_issue_count.most_common():
         print(f"- {org}: {count} issues")
 
-    # Fetch PRs created in the last 3 months
-    org_pr_count = get_pull_requests_last_3_months(repo, github_to_org)
-    print(f"\nPull Requests merged in {REPO_NAME} in the last 3 months by Organization (sorted):")
+    # Fetch PRs created in the last N months
+    org_pr_count = get_pull_requests_last_n_months(repo, github_to_org, months)
+    print(f"\nPull Requests merged in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_pr_count.most_common():
         print(f"- {org}: {count} PRs")
 
-    # Fetch reviews performed in the last 3 months
-    org_total_review_count, org_unique_review_count = get_reviews_last_3_months(repo, github_to_org)
-    print(f"\nCode Reviews performed in {REPO_NAME} in the last 3 months by Organization (sorted):")
+    # Fetch reviews performed in the last N months
+    org_total_review_count, org_unique_review_count = get_reviews_last_n_months(repo, github_to_org, months)
+    print(f"\nCode Reviews performed in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_total_review_count.most_common():
         print(f"- {org}: {count} total reviews")
 
-    print(f"\nUnique Code Reviews by Organization in {REPO_NAME} in the last 3 months (sorted):")
+    print(f"\nUnique Code Reviews by Organization in {REPO_NAME} in the last {months} months (sorted):")
     for org, count in org_unique_review_count.most_common():
         print(f"- {org}: {count} unique reviews")
 
@@ -148,6 +149,11 @@ def main(REPO_NAME, g, github_to_org):
     }
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Collect Anemoi contributor statistics.")
+    parser.add_argument("--months", type=int, default=3,
+                        help="Number of months of history to analyse (default: 3)")
+    args = parser.parse_args()
+
     g = Github(GITHUB_TOKEN)
     github_to_org = load_github_to_org_mapping()
 
@@ -157,10 +163,11 @@ if __name__ == "__main__":
 
     results = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "months": args.months,
         "repos": {},
     }
     for REPO_NAME in repo_list:
-        results["repos"][REPO_NAME] = main(REPO_NAME, g, github_to_org)
+        results["repos"][REPO_NAME] = main(REPO_NAME, g, github_to_org, args.months)
 
     with open("results.json", "w") as f:
         json.dump(results, f, indent=2)

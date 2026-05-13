@@ -6,6 +6,8 @@ from plotly.subplots import make_subplots
 with open("results.json") as f:
     data = json.load(f)
 
+months = data.get("months", 3)
+
 repos = list(data["repos"].keys())
 metric_keys  = ["issues", "pull_requests", "total_reviews", "unique_reviews"]
 metric_labels = ["Issues", "PRs", "Total Reviews", "Unique Reviews"]
@@ -46,7 +48,7 @@ for repo_idx, repo in enumerate(repos):
 
 fig.update_layout(
     barmode="stack",
-    title=f"Anemoi Contributors (last 3 months) — {data['generated_at'][:10]}",
+    title=f"Anemoi Contributors (last {months} month{'s' if months != 1 else ''}) — {data['generated_at'][:10]}",
     height=700,
     legend_title="Organisation",
     updatemenus=[
@@ -80,7 +82,7 @@ html = f"""<!DOCTYPE html>
   {plot_div}
 
   <h2>Methodology</h2>
-  <p>Data collected from the GitHub API via PyGithub, covering activity in the 90 days prior to {data['generated_at'][:10]}
+  <p>Data collected from the GitHub API via PyGithub, covering activity in the {months * 30} days prior to {data['generated_at'][:10]}
   across the following repositories: {", ".join(repos)}.</p>
   <ul>
     <li><strong>Issues:</strong> count of issues opened, grouped by the organisation of the issue author.</li>
