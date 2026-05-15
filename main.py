@@ -2,6 +2,7 @@ from github import Github
 from datetime import datetime, timedelta, timezone
 import argparse
 import os
+import re
 import json
 from dotenv import load_dotenv
 from collections import Counter
@@ -20,14 +21,53 @@ def load_github_to_org_mapping():
     with open("github_to_org.json", "r") as f:
         return json.load(f)
 
+def load_email_to_org_mapping():
+    """Load the manually maintained email-to-organisation cache."""
+    try:
+        with open("email_to_org.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def resolve_coauthors(commit_message, email_to_org):
+    """Extract Co-authored-by contributors from a commit message.
+
+    Returns (logins, orgs):
+    - logins: resolved via GitHub noreply format, fed through github_to_org as normal
+    - orgs:   resolved directly from email_to_org.json, bypassing the login lookup
+
+    Unresolved emails are added to email_to_org as 'Unknown' for manual follow-up.
+    """
+    logins = set()
+    orgs = set()
+    for match in re.finditer(
+        r"Co-authored-by:[^<]*<([^>]+)>", commit_message, re.IGNORECASE
+    ):
+        email = match.group(1).strip()
+        # 1. GitHub noreply: digits+login@users.noreply.github.com → extract login
+        noreply = re.match(r"(?:\d+\+)?([^@]+)@users\.noreply\.github\.com", email)
+        if noreply:
+            logins.add(noreply.group(1))
+            continue
+        # 2. Direct email → org mapping
+        if email in email_to_org:
+            orgs.add(email_to_org[email])
+            continue
+        # Unresolved — add to cache as Unknown for manual follow-up
+        print(f"Unresolved Co-authored-by email: {email}")
+        email_to_org[email] = "Unknown"
+        orgs.add("Unknown")
+    return logins, orgs
+
 def aggregate_by_organization(user_contributions, github_to_org):
     """Aggregate contributions by organization."""
     org_contributions = Counter()
     for user, count in user_contributions.items():
         org = github_to_org.get(user, "Unknown")  # Default to "Unknown" if user not in mapping
-        org_contributions[org] += count
-        if org == "Unknown":
+        if org == "Unknown" and user not in github_to_org:
             print(f"Unknown GitHub user: {user}")  # Print unknown users for future assignment
+            github_to_org[user] = "Unknown"
+        org_contributions[org] += count
     return org_contributions
 
 def get_contributors(repo):
@@ -50,9 +90,10 @@ def get_issues_last_n_months(repo, github_to_org, months):
     org_issue_count = aggregate_by_organization(user_issue_count, github_to_org)
     return org_issue_count
 
-def get_pull_requests_last_n_months(repo, github_to_org, months):
+def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months):
     """Fetch merged pull requests in the last N months.
-    Each org is counted once per PR, even if multiple authors from that org contributed."""
+    Each org is counted once per PR, even if multiple authors from that org contributed.
+    Authors are identified via: PR opener, commit authors, and Co-authored-by trailers."""
     three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
     pulls = repo.get_pulls(state="all")
     org_pr_count = Counter()
@@ -61,18 +102,23 @@ def get_pull_requests_last_n_months(repo, github_to_org, months):
         if pr.created_at < three_months_ago or not pr.merged:
             continue
 
-        # Collect all unique authors: PR opener + all commit authors
+        # Collect login-based authors and directly-resolved orgs from co-author trailers
         authors = {pr.user.login}
+        direct_orgs = set()
         for commit in pr.get_commits():
             if commit.author:
                 authors.add(commit.author.login)
+            coauthor_logins, coauthor_orgs = resolve_coauthors(commit.commit.message, email_to_org)
+            authors |= coauthor_logins
+            direct_orgs |= coauthor_orgs
 
-        # Map to orgs, deduplicating per PR so each org is counted at most once
-        orgs = set()
+        # Map logins to orgs, deduplicating per PR so each org is counted at most once
+        orgs = set(direct_orgs)
         for user in authors:
             org = github_to_org.get(user, "Unknown")
-            if org == "Unknown":
+            if org == "Unknown" and user not in github_to_org:
                 print(f"Unknown GitHub user: {user}")
+                github_to_org[user] = "Unknown"
             orgs.add(org)
 
         for org in orgs:
@@ -111,7 +157,7 @@ def get_reviews_last_n_months(repo, github_to_org, months):
 
     return org_total_review_count, org_unique_review_count
 
-def main(REPO_NAME, g, github_to_org, months):
+def main(REPO_NAME, g, github_to_org, email_to_org, months):
     # Get the repository
     repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
 
@@ -126,7 +172,7 @@ def main(REPO_NAME, g, github_to_org, months):
         print(f"- {org}: {count} issues")
 
     # Fetch PRs created in the last N months
-    org_pr_count = get_pull_requests_last_n_months(repo, github_to_org, months)
+    org_pr_count = get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months)
     print(f"\nPull Requests merged in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_pr_count.most_common():
         print(f"- {org}: {count} PRs")
@@ -150,14 +196,15 @@ def main(REPO_NAME, g, github_to_org, months):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect Anemoi contributor statistics.")
-    parser.add_argument("--months", type=int, default=3,
+    parser.add_argument("--months", type=int, default=6,
                         help="Number of months of history to analyse (default: 3)")
     args = parser.parse_args()
 
     g = Github(GITHUB_TOKEN)
     github_to_org = load_github_to_org_mapping()
+    email_to_org = load_email_to_org_mapping()
 
-    repo_list = ["anemoi-core", "anemoi-datasets",
+    repo_list = ["anemoi", "anemoi-core", "anemoi-datasets",
                  "anemoi-inference", "anemoi-transform",
                  "anemoi-utils"]
 
@@ -167,8 +214,16 @@ if __name__ == "__main__":
         "repos": {},
     }
     for REPO_NAME in repo_list:
-        results["repos"][REPO_NAME] = main(REPO_NAME, g, github_to_org, args.months)
+        results["repos"][REPO_NAME] = main(REPO_NAME, g, github_to_org, email_to_org, args.months)
 
     with open("results.json", "w") as f:
         json.dump(results, f, indent=2)
     print("\nResults saved to results.json")
+
+    with open("email_to_org.json", "w") as f:
+        json.dump(email_to_org, f, indent=2)
+    print("Email-to-org cache saved to email_to_org.json")
+
+    with open("github_to_org.json", "w") as f:
+        json.dump(github_to_org, f, indent=2)
+    print("GitHub-to-org mapping saved to github_to_org.json")

@@ -103,16 +103,16 @@ html = f"""<!DOCTYPE html>
   across the following repositories: {", ".join(repos)}.</p>
   <ul>
     <li><strong>Issues:</strong> count of issues opened, grouped by the organisation of the issue author.</li>
-    <li><strong>Pull Requests:</strong> count of merged PRs where an organisation had at least one commit author.
-    Each organisation is counted at most once per PR, even if multiple members contributed commits.</li>
+    <li><strong>Pull Requests:</strong> count of merged PRs where an organisation had at least one contributor.
+    Contributors are identified as: the PR opener, any commit author, and any <code>Co-authored-by:</code> trailer
+    entries in commit messages (resolved via GitHub's noreply address format or a manually maintained email mapping).
+    Each organisation is counted at most once per PR, even if multiple members contributed.</li>
     <li><strong>Total Reviews:</strong> all review submissions on PRs created in the period, grouped by the reviewer's organisation.</li>
     <li><strong>Unique Reviews:</strong> as above, but each reviewer is counted at most once per PR.</li>
   </ul>
-  <p>Organisation attribution is based on a manually maintained mapping of GitHub usernames to organisations.</p>
+  <p>Organisation attribution is based on a manually maintained mapping of GitHub usernames to organisations which may not be exhaustive.</p>
 </body>
 </html>"""
 
 with open("docs/index.html", "w") as f:
     f.write(html)
-
-fig.show()
