@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -21,6 +22,47 @@ all_orgs = sorted(all_orgs)
 
 colors = px.colors.qualitative.Plotly
 color_map = {org: colors[i % len(colors)] for i, org in enumerate(all_orgs)}
+
+# Aggregate each metric across all repos
+aggregated = {key: Counter() for key in metric_keys}
+for repo_data in data["repos"].values():
+    for key in metric_keys:
+        for org, count in repo_data[key].items():
+            aggregated[key][org] += count
+
+# Build aggregated-total figure
+fig_agg = go.Figure()
+for org in all_orgs:
+    counts = [aggregated[key].get(org, 0) for key in metric_keys]
+    fig_agg.add_trace(
+        go.Bar(
+            name=org,
+            x=metric_labels,
+            y=counts,
+            legendgroup=org,
+            hovertemplate=f"{org}: %{{y}}<extra></extra>",
+            marker_color=color_map[org],
+        )
+    )
+
+fig_agg.update_layout(
+    barmode="stack",
+    title=f"Anemoi Contributors — All Repos Combined (last {months} month{'s' if months != 1 else ''}) — {data['generated_at'][:10]}",
+    height=500,
+    legend_title="Organisation",
+    updatemenus=[
+        dict(
+            type="buttons",
+            direction="left",
+            x=0.0,
+            y=1.12,
+            buttons=[
+                dict(label="Counts", method="relayout", args=[{"barnorm": ""}]),
+                dict(label="Percentage", method="relayout", args=[{"barnorm": "percent"}]),
+            ],
+        )
+    ],
+)
 
 cols = 3
 rows = -(-len(repos) // cols)  # ceiling division
@@ -66,6 +108,7 @@ fig.update_layout(
 )
 
 plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
+plot_div_agg = fig_agg.to_html(full_html=False, include_plotlyjs=False)
 
 html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -79,6 +122,10 @@ html = f"""<!DOCTYPE html>
   </style>
 </head>
 <body>
+  <h2>All Repositories Combined</h2>
+  {plot_div_agg}
+
+  <h2>Per Repository</h2>
   {plot_div}
 
   <h2>Methodology</h2>
