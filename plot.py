@@ -23,6 +23,9 @@ all_orgs = sorted(all_orgs)
 colors = px.colors.qualitative.Plotly
 color_map = {org: colors[i % len(colors)] for i, org in enumerate(all_orgs)}
 
+# Orgs hidden by default (still toggleable via the legend)
+HIDDEN_BY_DEFAULT = {"Bots", "CodeAgents"}
+
 # Aggregate each metric across all repos
 aggregated = {key: Counter() for key in metric_keys}
 for repo_data in data["repos"].values():
@@ -30,57 +33,29 @@ for repo_data in data["repos"].values():
         for org, count in repo_data[key].items():
             aggregated[key][org] += count
 
-# Build aggregated-total figure
-fig_agg = go.Figure()
-for org in all_orgs:
-    counts = [aggregated[key].get(org, 0) for key in metric_keys]
-    fig_agg.add_trace(
-        go.Bar(
-            name=org,
-            x=metric_labels,
-            y=counts,
-            legendgroup=org,
-            hovertemplate=f"{org}: %{{y}}<extra></extra>",
-            marker_color=color_map[org],
-        )
-    )
-
-fig_agg.update_layout(
-    barmode="stack",
-    title=f"Anemoi Contributors — All Repos Combined (last {months} month{'s' if months != 1 else ''}) — {data['generated_at'][:10]}",
-    height=500,
-    legend_title="Organisation",
-    updatemenus=[
-        dict(
-            type="buttons",
-            direction="left",
-            x=0.0,
-            y=1.12,
-            buttons=[
-                dict(label="Counts", method="relayout", args=[{"barnorm": ""}]),
-                dict(label="Percentage", method="relayout", args=[{"barnorm": "percent"}]),
-            ],
-        )
-    ],
-)
-
+# Build a single figure: "All Repos" aggregate first, then per-repo subplots
+all_panels = ["All Repos"] + repos
 cols = 3
-rows = -(-len(repos) // cols)  # ceiling division
-fig = make_subplots(rows=rows, cols=cols, subplot_titles=repos)
+rows = -(-len(all_panels) // cols)  # ceiling division
+fig = make_subplots(rows=rows, cols=cols, subplot_titles=all_panels)
 
-for repo_idx, repo in enumerate(repos):
-    row = repo_idx // cols + 1
-    col = repo_idx % cols + 1
+for panel_idx, panel in enumerate(all_panels):
+    row = panel_idx // cols + 1
+    col = panel_idx % cols + 1
 
     for org in all_orgs:
-        counts = [data["repos"][repo].get(key, {}).get(org, 0) for key in metric_keys]
+        if panel == "All Repos":
+            counts = [aggregated[key].get(org, 0) for key in metric_keys]
+        else:
+            counts = [data["repos"][panel].get(key, {}).get(org, 0) for key in metric_keys]
         fig.add_trace(
             go.Bar(
                 name=org,
                 x=metric_labels,
                 y=counts,
                 legendgroup=org,
-                showlegend=(repo_idx == 0),
+                showlegend=(panel_idx == 0),
+                visible="legendonly" if org in HIDDEN_BY_DEFAULT else True,
                 hovertemplate=f"{org}: %{{y}}<extra></extra>",
                 marker_color=color_map[org],
             ),
@@ -91,7 +66,7 @@ for repo_idx, repo in enumerate(repos):
 fig.update_layout(
     barmode="stack",
     title=f"Anemoi Contributors (last {months} month{'s' if months != 1 else ''}) — {data['generated_at'][:10]}",
-    height=700,
+    height=300 * rows,
     legend_title="Organisation",
     updatemenus=[
         dict(
@@ -108,7 +83,6 @@ fig.update_layout(
 )
 
 plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
-plot_div_agg = fig_agg.to_html(full_html=False, include_plotlyjs=False)
 
 html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -122,10 +96,6 @@ html = f"""<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h2>All Repositories Combined</h2>
-  {plot_div_agg}
-
-  <h2>Per Repository</h2>
   {plot_div}
 
   <h2>Methodology</h2>
