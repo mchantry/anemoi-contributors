@@ -90,13 +90,30 @@ def get_issues_last_n_months(repo, github_to_org, months):
     org_issue_count = aggregate_by_organization(user_issue_count, github_to_org)
     return org_issue_count
 
+PR_TYPE_PREFIXES = ("feat", "fix", "chore", "docs", "refactor", "test", "ci", "perf", "build", "style")
+
+def classify_pr_type(title):
+    """Categorise a PR by its Conventional Commits prefix in the title."""
+    t = title.lower().lstrip()
+    for prefix in PR_TYPE_PREFIXES:
+        # Match "feat:", "feat(scope):", "feat!:"
+        if re.match(rf"{prefix}\s*(\([^)]*\))?\s*!?:", t):
+            return prefix
+    return "other"
+
 def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months):
     """Fetch merged pull requests in the last N months.
     Each org is counted once per PR, even if multiple authors from that org contributed.
-    Authors are identified via: PR opener, commit authors, and Co-authored-by trailers."""
+    Authors are identified via: PR opener, commit authors, and Co-authored-by trailers.
+
+    Returns (org_pr_count, org_pr_count_by_type):
+    - org_pr_count: {org: total_prs}
+    - org_pr_count_by_type: {pr_type: {org: count}}
+    """
     three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
     pulls = repo.get_pulls(state="all")
     org_pr_count = Counter()
+    org_pr_count_by_type = {}
 
     for pr in pulls:
         if pr.created_at < three_months_ago or not pr.merged:
@@ -121,10 +138,15 @@ def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months):
                 github_to_org[user] = "Unknown"
             orgs.add(org)
 
+        pr_type = classify_pr_type(pr.title)
+        if pr_type == "other":
+            print(f"Uncategorised PR: #{pr.number} - {pr.title}")
+
         for org in orgs:
             org_pr_count[org] += 1
+            org_pr_count_by_type.setdefault(pr_type, Counter())[org] += 1
 
-    return org_pr_count
+    return org_pr_count, org_pr_count_by_type
 
 def get_reviews_last_n_months(repo, github_to_org, months):
     """
@@ -172,10 +194,15 @@ def main(REPO_NAME, g, github_to_org, email_to_org, months):
         print(f"- {org}: {count} issues")
 
     # Fetch PRs created in the last N months
-    org_pr_count = get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months)
+    org_pr_count, org_pr_count_by_type = get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months)
     print(f"\nPull Requests merged in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_pr_count.most_common():
         print(f"- {org}: {count} PRs")
+
+    print(f"\nPull Requests by type in {REPO_NAME} in the last {months} months:")
+    for pr_type, org_counts in sorted(org_pr_count_by_type.items()):
+        total = sum(org_counts.values())
+        print(f"- {pr_type}: {total} PRs")
 
     # Fetch reviews performed in the last N months
     org_total_review_count, org_unique_review_count = get_reviews_last_n_months(repo, github_to_org, months)
@@ -190,6 +217,7 @@ def main(REPO_NAME, g, github_to_org, email_to_org, months):
     return {
         "issues": dict(org_issue_count),
         "pull_requests": dict(org_pr_count),
+        "pull_requests_by_type": {t: dict(c) for t, c in org_pr_count_by_type.items()},
         "total_reviews": dict(org_total_review_count),
         "unique_reviews": dict(org_unique_review_count),
     }
