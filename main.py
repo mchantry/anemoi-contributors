@@ -1,6 +1,7 @@
 from github import Github
 from datetime import datetime, timedelta, timezone
 import argparse
+import hashlib
 import os
 import re
 import json
@@ -29,14 +30,20 @@ def load_email_to_org_mapping():
     except FileNotFoundError:
         return {}
 
+def hash_email(email):
+    """Normalise and hash an email address so we never store the plaintext on disk."""
+    return hashlib.sha256(email.lower().strip().encode("utf-8")).hexdigest()
+
 def resolve_coauthors(commit_message, email_to_org):
     """Extract Co-authored-by contributors from a commit message.
 
     Returns (logins, orgs):
     - logins: resolved via GitHub noreply format, fed through github_to_org as normal
-    - orgs:   resolved directly from email_to_org.json, bypassing the login lookup
+    - orgs:   resolved directly from email_to_org.json (keyed by SHA-256 hash of the email)
 
     Unresolved emails are added to email_to_org as 'Unknown' for manual follow-up.
+    Only hashes are stored on disk — plaintext emails appear in stdout for the human
+    maintainer to look up, but never persist in the repository.
     """
     logins = set()
     orgs = set()
@@ -49,13 +56,14 @@ def resolve_coauthors(commit_message, email_to_org):
         if noreply:
             logins.add(noreply.group(1))
             continue
-        # 2. Direct email → org mapping
-        if email in email_to_org:
-            orgs.add(email_to_org[email])
+        # 2. Direct email → org mapping, keyed by SHA-256 hash of the email
+        email_hash = hash_email(email)
+        if email_hash in email_to_org:
+            orgs.add(email_to_org[email_hash])
             continue
         # Unresolved — add to cache as Unknown for manual follow-up
-        print(f"Unresolved Co-authored-by email: {email}")
-        email_to_org[email] = "Unknown"
+        print(f"Unresolved Co-authored-by email: {email} (hash {email_hash[:12]}…)")
+        email_to_org[email_hash] = "Unknown"
         orgs.add("Unknown")
     return logins, orgs
 
@@ -247,6 +255,14 @@ if __name__ == "__main__":
     with open("results.json", "w") as f:
         json.dump(results, f, indent=2)
     print("\nResults saved to results.json")
+
+    # Archive a dated snapshot so we can build a time series across runs
+    os.makedirs("history", exist_ok=True)
+    snapshot_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    snapshot_path = f"history/results-{snapshot_date}.json"
+    with open(snapshot_path, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"Snapshot archived to {snapshot_path}")
 
     with open("email_to_org.json", "w") as f:
         json.dump(email_to_org, f, indent=2)
