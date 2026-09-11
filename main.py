@@ -85,14 +85,17 @@ def get_contributors(repo):
     contributors = repo.get_contributors()
     return contributors
 
-def get_issues_last_n_months(repo, github_to_org, months):
-    """Fetch issues created in the last N months and aggregate by organization."""
-    since = datetime.now(timezone.utc) - relativedelta(months=months)
+def get_issues_last_n_months(repo, github_to_org, months, as_of):
+    """Fetch issues touched in the N months ending at as_of, aggregated by organisation."""
+    since = as_of - relativedelta(months=months)
     issues = repo.get_issues(state="all", since=since)
     user_issue_count = Counter()
 
     for issue in issues:
-        if issue.user:  # Ensure the issue has a user (not a bot)
+        # Skip issues updated after as_of so historical snapshots are not polluted by future activity.
+        if issue.updated_at and issue.updated_at > as_of:
+            continue
+        if issue.user:
             user_issue_count[issue.user.login] += 1
 
     # Aggregate by organization
@@ -110,8 +113,8 @@ def classify_pr_type(title):
             return prefix
     return "other"
 
-def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months):
-    """Fetch merged pull requests in the last N months.
+def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months, as_of):
+    """Fetch merged pull requests in the N months ending at as_of.
     Each org is counted once per PR, even if multiple authors from that org contributed.
     Authors are identified via: PR opener, commit authors, and Co-authored-by trailers.
 
@@ -119,13 +122,18 @@ def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months):
     - org_pr_count: {org: total_prs}
     - org_pr_count_by_type: {pr_type: {org: count}}
     """
-    since = datetime.now(timezone.utc) - relativedelta(months=months)
+    since = as_of - relativedelta(months=months)
     pulls = repo.get_pulls(state="all")
     org_pr_count = Counter()
     org_pr_count_by_type = {}
 
     for pr in pulls:
-        if pr.created_at < since or not pr.merged:
+        if pr.created_at < since or pr.created_at > as_of:
+            continue
+        if not pr.merged:
+            continue
+        # Skip PRs merged after as_of so historical snapshots ignore future merges.
+        if pr.merged_at is None or pr.merged_at > as_of:
             continue
 
         # Collect login-based authors and directly-resolved orgs from co-author trailers
@@ -157,30 +165,32 @@ def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months):
 
     return org_pr_count, org_pr_count_by_type
 
-def get_reviews_last_n_months(repo, github_to_org, months):
+def get_reviews_last_n_months(repo, github_to_org, months, as_of):
     """
-    Fetch code reviews performed in the last N months and calculate both:
+    Fetch code reviews in the N months ending at as_of and calculate both:
     - Total reviews (all reviews by all users)
     - Unique reviews (1 review per PR per user)
     Aggregate both by organization.
     """
-    since = datetime.now(timezone.utc) - relativedelta(months=months)
+    since = as_of - relativedelta(months=months)
     pulls = repo.get_pulls(state="all")
     user_total_review_count = Counter()
     user_unique_review_count = Counter()
 
     for pr in pulls:
-        if pr.created_at >= since:  # only PRs created in the window
-            reviews = pr.get_reviews()
-            users_reviewed = set()  # Track users who have reviewed this PR
-            for review in reviews:
-                if review.user:  # Ensure the review has a user (not a bot)
-                    # Count total reviews
-                    user_total_review_count[review.user.login] += 1
-                    # Count unique reviews (only 1 review per user per PR)
-                    if review.user.login not in users_reviewed:
-                        user_unique_review_count[review.user.login] += 1
-                        users_reviewed.add(review.user.login)
+        if not (since <= pr.created_at <= as_of):
+            continue
+        reviews = pr.get_reviews()
+        users_reviewed = set()  # Track users who have reviewed this PR
+        for review in reviews:
+            # Skip reviews submitted after as_of; drop pending reviews with no timestamp.
+            if review.submitted_at is None or review.submitted_at > as_of:
+                continue
+            if review.user:
+                user_total_review_count[review.user.login] += 1
+                if review.user.login not in users_reviewed:
+                    user_unique_review_count[review.user.login] += 1
+                    users_reviewed.add(review.user.login)
 
     # Aggregate both by organization
     org_total_review_count = aggregate_by_organization(user_total_review_count, github_to_org)
@@ -188,7 +198,7 @@ def get_reviews_last_n_months(repo, github_to_org, months):
 
     return org_total_review_count, org_unique_review_count
 
-def main(REPO_NAME, g, github_to_org, email_to_org, months):
+def main(REPO_NAME, g, github_to_org, email_to_org, months, as_of):
     # Get the repository
     repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
 
@@ -197,13 +207,13 @@ def main(REPO_NAME, g, github_to_org, email_to_org, months):
     print(f"------------------------------")
 
     # Fetch issues created in the last N months
-    org_issue_count = get_issues_last_n_months(repo, github_to_org, months)
+    org_issue_count = get_issues_last_n_months(repo, github_to_org, months, as_of)
     print(f"\nIssues created in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_issue_count.most_common():
         print(f"- {org}: {count} issues")
 
     # Fetch PRs created in the last N months
-    org_pr_count, org_pr_count_by_type = get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months)
+    org_pr_count, org_pr_count_by_type = get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months, as_of)
     print(f"\nPull Requests merged in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_pr_count.most_common():
         print(f"- {org}: {count} PRs")
@@ -214,7 +224,7 @@ def main(REPO_NAME, g, github_to_org, email_to_org, months):
         print(f"- {pr_type}: {total} PRs")
 
     # Fetch reviews performed in the last N months
-    org_total_review_count, org_unique_review_count = get_reviews_last_n_months(repo, github_to_org, months)
+    org_total_review_count, org_unique_review_count = get_reviews_last_n_months(repo, github_to_org, months, as_of)
     print(f"\nCode Reviews performed in {REPO_NAME} in the last {months} months by Organization (sorted):")
     for org, count in org_total_review_count.most_common():
         print(f"- {org}: {count} total reviews")
@@ -234,8 +244,18 @@ def main(REPO_NAME, g, github_to_org, email_to_org, months):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect Anemoi contributor statistics.")
     parser.add_argument("--months", type=int, default=6,
-                        help="Number of months of history to analyse (default: 3)")
+                        help="Number of months of history to analyse (default: 6)")
+    parser.add_argument("--as-of", dest="as_of", type=str, default=None,
+                        help="Treat this YYYY-MM-DD date as 'now'. Default: today. "
+                             "Historical runs write only the dated snapshot, not results.json.")
     args = parser.parse_args()
+
+    if args.as_of is None:
+        as_of = datetime.now(timezone.utc)
+        is_today = True
+    else:
+        as_of = datetime.strptime(args.as_of, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        is_today = args.as_of == datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     g = Github(GITHUB_TOKEN)
     github_to_org = load_github_to_org_mapping()
@@ -246,20 +266,25 @@ if __name__ == "__main__":
                  "anemoi-utils"]
 
     results = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": as_of.isoformat(),
         "months": args.months,
         "repos": {},
     }
     for REPO_NAME in repo_list:
-        results["repos"][REPO_NAME] = main(REPO_NAME, g, github_to_org, email_to_org, args.months)
+        results["repos"][REPO_NAME] = main(REPO_NAME, g, github_to_org, email_to_org, args.months, as_of)
 
-    with open("results.json", "w") as f:
-        json.dump(results, f, indent=2)
-    print("\nResults saved to results.json")
+    # Only refresh the "latest" pointer when running for today, so historical
+    # backfills never clobber the current snapshot.
+    if is_today:
+        with open("results.json", "w") as f:
+            json.dump(results, f, indent=2)
+        print("\nResults saved to results.json")
+    else:
+        print(f"\nHistorical run (as-of {args.as_of}); results.json not modified.")
 
     # Archive a dated snapshot so we can build a time series across runs
     os.makedirs("history", exist_ok=True)
-    snapshot_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    snapshot_date = as_of.strftime("%Y-%m-%d")
     snapshot_path = f"history/results-{snapshot_date}.json"
     with open(snapshot_path, "w") as f:
         json.dump(results, f, indent=2)

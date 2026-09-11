@@ -5,6 +5,11 @@ on:
     # Every Monday at 06:00 UTC
     - cron: "0 6 * * 1"
   workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Optional: run backfill.py first (leave blank to skip). Example: --months 6 --step-months 1 --count 24"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -24,6 +29,12 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Backfill historical snapshots (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python backfill.py ${{ inputs.backfill }}
 
       - name: Collect contributor stats
         env:
