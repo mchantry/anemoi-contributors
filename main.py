@@ -1,5 +1,6 @@
 from github import Github
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
 import argparse
 import hashlib
 import os
@@ -86,8 +87,8 @@ def get_contributors(repo):
 
 def get_issues_last_n_months(repo, github_to_org, months):
     """Fetch issues created in the last N months and aggregate by organization."""
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
-    issues = repo.get_issues(state="all", since=three_months_ago)
+    since = datetime.now(timezone.utc) - relativedelta(months=months)
+    issues = repo.get_issues(state="all", since=since)
     user_issue_count = Counter()
 
     for issue in issues:
@@ -118,13 +119,13 @@ def get_pull_requests_last_n_months(repo, github_to_org, email_to_org, months):
     - org_pr_count: {org: total_prs}
     - org_pr_count_by_type: {pr_type: {org: count}}
     """
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
+    since = datetime.now(timezone.utc) - relativedelta(months=months)
     pulls = repo.get_pulls(state="all")
     org_pr_count = Counter()
     org_pr_count_by_type = {}
 
     for pr in pulls:
-        if pr.created_at < three_months_ago or not pr.merged:
+        if pr.created_at < since or not pr.merged:
             continue
 
         # Collect login-based authors and directly-resolved orgs from co-author trailers
@@ -163,13 +164,13 @@ def get_reviews_last_n_months(repo, github_to_org, months):
     - Unique reviews (1 review per PR per user)
     Aggregate both by organization.
     """
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=months * 30)
+    since = datetime.now(timezone.utc) - relativedelta(months=months)
     pulls = repo.get_pulls(state="all")
     user_total_review_count = Counter()
     user_unique_review_count = Counter()
 
     for pr in pulls:
-        if pr.created_at >= three_months_ago:  # Only consider PRs created in the last 3 months
+        if pr.created_at >= since:  # only PRs created in the window
             reviews = pr.get_reviews()
             users_reviewed = set()  # Track users who have reviewed this PR
             for review in reviews:

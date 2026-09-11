@@ -9,19 +9,20 @@ from plotly.subplots import make_subplots
 # --- Shared configuration -----------------------------------------------------
 metric_keys = ["issues", "pull_requests", "total_reviews", "unique_reviews"]
 metric_labels = ["Issues", "PRs", "Total Reviews", "Unique Reviews"]
-HIDDEN_BY_DEFAULT = {"Bots", "CodeAgents"}
+# Orgs excluded from charts entirely (still present in results.json for anyone who wants them).
+EXCLUDED_ORGS = {"Bots", "CodeAgents"}
 KNOWN_TYPE_ORDER = ["feat", "fix", "refactor", "perf", "test", "docs", "ci", "build", "chore", "style"]
 
 
 def collect_orgs(snap):
-    """Return sorted list of all orgs appearing anywhere in a snapshot."""
+    """Return sorted list of all orgs appearing anywhere in a snapshot, minus excluded orgs."""
     orgs = set()
     for repo_data in snap["repos"].values():
         for key in metric_keys:
             orgs.update(repo_data.get(key, {}).keys())
         for org_counts in repo_data.get("pull_requests_by_type", {}).values():
             orgs.update(org_counts.keys())
-    return sorted(orgs)
+    return sorted(orgs - EXCLUDED_ORGS)
 
 
 def build_main_figure(snap, all_orgs, color_map, include_plotlyjs):
@@ -55,7 +56,6 @@ def build_main_figure(snap, all_orgs, color_map, include_plotlyjs):
                     y=counts,
                     legendgroup=org,
                     showlegend=(panel_idx == 0),
-                    visible="legendonly" if org in HIDDEN_BY_DEFAULT else True,
                     hovertemplate=f"{org}: %{{y}}<extra></extra>",
                     marker_color=color_map[org],
                 ),
@@ -124,7 +124,6 @@ def build_pr_types_figure(snap, all_orgs, color_map, rows, cols, all_panels):
                     y=counts,
                     legendgroup=org,
                     showlegend=(panel_idx == 0),
-                    visible="legendonly" if org in HIDDEN_BY_DEFAULT else True,
                     hovertemplate=f"{org}: %{{y}}<extra></extra>",
                     marker_color=color_map[org],
                 ),
@@ -185,8 +184,9 @@ def render_snapshot_page(snap, output_path):
   {"<h2>Merged PR Types</h2>" + types_div if types_div else ""}
 
   <h2>Methodology</h2>
-  <p>Data collected from the GitHub API via PyGithub, covering activity in the {months * 30} days prior to {generated}
+  <p>Data collected from the GitHub API via PyGithub, covering activity in the {months} months prior to {generated}
   across the following repositories: {", ".join(repos)}.</p>
+  <p>Bot accounts and automated code agents are excluded from all charts on this page (they remain in the archived JSON).</p>
 </body>
 </html>"""
 
@@ -250,7 +250,6 @@ if snapshot_files:
                     mode="lines+markers",
                     legendgroup=org,
                     showlegend=(metric_idx == 0),
-                    visible="legendonly" if org in HIDDEN_BY_DEFAULT else True,
                     line=dict(color=trend_color_map[org]),
                     hovertemplate=f"{org}: %{{y}} on %{{x}}<extra></extra>",
                 ),
@@ -258,7 +257,10 @@ if snapshot_files:
                 col=col,
             )
     fig_trend.update_layout(
-        title=f"Trends across snapshots ({len(snapshots)} runs, each covering a {months}-month window)",
+        title=(
+            f"Trends across snapshots ({len(snapshots)} runs) — "
+            f"each point is a rolling {months}-month window ending on that date, so adjacent points overlap"
+        ),
         height=700,
         legend_title="Organisation",
     )
@@ -304,8 +306,9 @@ html = f"""<!DOCTYPE html>
   {history_nav}
 
   <h2>Methodology</h2>
-  <p>Data collected from the GitHub API via PyGithub, covering activity in the {months * 30} days prior to {data['generated_at'][:10]}
+  <p>Data collected from the GitHub API via PyGithub, covering activity in the {months} months prior to {data['generated_at'][:10]}
   across the following repositories: {", ".join(repos)}.</p>
+  <p>Bot accounts and automated code agents are excluded from all charts on this page (they remain in <code>results.json</code>).</p>
   <ul>
     <li><strong>Issues:</strong> count of issues opened, grouped by the organisation of the issue author.</li>
     <li><strong>Pull Requests:</strong> count of merged PRs where an organisation had at least one contributor.
