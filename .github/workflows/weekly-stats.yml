@@ -30,16 +30,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Backfill historical snapshots (optional)
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill != '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python backfill.py ${{ inputs.backfill }}
-
-      - name: Collect contributor stats
+      - name: Refresh cache and collect today's snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python main.py --months 6
+
+      - name: Backfill historical snapshots (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill != '' }}
+        # No GitHub API calls needed — backfill is a pure pivot over the cache.
+        run: python backfill.py ${{ inputs.backfill }}
 
       - name: Regenerate plots
         run: python plot.py
@@ -48,7 +47,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add results.json history/ docs/index.html docs/history/ email_to_org.json github_to_org.json
+          git add results.json history/ docs/index.html docs/history/ email_to_org.json github_to_org.json cache/
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
