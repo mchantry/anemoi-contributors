@@ -94,11 +94,11 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
     for issue in cache["issues"].values():
         if issue.get("is_pull_request"):
             continue
-        updated_iso = issue.get("updated_at")
-        if not updated_iso:
+        created_iso = issue.get("created_at")
+        if not created_iso:
             continue
-        updated_at = datetime.fromisoformat(updated_iso)
-        if not (since <= updated_at <= as_of):
+        created_at = datetime.fromisoformat(created_iso)
+        if not (since <= created_at <= as_of):
             continue
         if issue.get("user"):
             user_issue_count[issue["user"]] += 1
@@ -184,7 +184,7 @@ def _print_repo_summary(repo_name, snap, months):
     print(f"------------------------------")
     print(f" {repo_name}:")
     print(f"------------------------------")
-    print(f"\nIssues touched in {repo_name} in the last {months} months by Organization:")
+    print(f"\nIssues opened in {repo_name} in the last {months} months by Organization:")
     for org, count in Counter(snap["issues"]).most_common():
         print(f"- {org}: {count} issues")
     print(f"\nPull Requests merged in {repo_name} in the last {months} months by Organization:")
