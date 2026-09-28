@@ -309,7 +309,7 @@
       "is_pull_request": false,
       "number": 133,
       "state": "open",
-      "updated_at": "2026-09-13T23:06:44+00:00",
+      "updated_at": "2026-09-23T23:06:20+00:00",
       "user": "anaprietonem"
     },
     "134": {
@@ -348,8 +348,8 @@
       "created_at": "2026-06-18T10:02:43+00:00",
       "is_pull_request": true,
       "number": 138,
-      "state": "open",
-      "updated_at": "2026-06-24T15:38:58+00:00",
+      "state": "closed",
+      "updated_at": "2026-09-28T08:11:04+00:00",
       "user": "JPXKQX"
     },
     "139": {
@@ -516,8 +516,8 @@
       "created_at": "2026-09-11T09:02:06+00:00",
       "is_pull_request": true,
       "number": 157,
-      "state": "open",
-      "updated_at": "2026-09-11T09:39:38+00:00",
+      "state": "closed",
+      "updated_at": "2026-09-23T13:10:44+00:00",
       "user": "VeraChristina"
     },
     "158": {
@@ -532,8 +532,8 @@
       "created_at": "2026-09-21T09:01:40+00:00",
       "is_pull_request": true,
       "number": 159,
-      "state": "open",
-      "updated_at": "2026-09-21T10:47:54+00:00",
+      "state": "closed",
+      "updated_at": "2026-09-22T12:44:52+00:00",
       "user": "mc4117"
     },
     "16": {
@@ -1257,8 +1257,8 @@
       "user": "VeraChristina"
     }
   },
-  "last_issues_since": "2026-09-21T10:43:37.039073+00:00",
-  "last_refreshed_at": "2026-09-21T11:43:37.039073+00:00",
+  "last_issues_since": "2026-09-28T11:38:50.484535+00:00",
+  "last_refreshed_at": "2026-09-28T12:38:50.484535+00:00",
   "prs": {
     "1": {
       "additions": 3,
@@ -2180,19 +2180,22 @@
       "user": "VeraChristina"
     },
     "138": {
-      "additions": 44,
+      "additions": 46,
       "changed_files": 1,
-      "closed_at": null,
+      "closed_at": "2026-09-28T08:11:02+00:00",
       "coauthor_email_hashes": [],
-      "coauthor_logins": [],
+      "coauthor_logins": [
+        "anaprietonem"
+      ],
       "commit_authors": [
         "JPXKQX",
+        "mchantry",
         "pre-commit-ci[bot]"
       ],
       "created_at": "2026-06-18T10:02:42+00:00",
       "deletions": 0,
-      "merged": false,
-      "merged_at": null,
+      "merged": true,
+      "merged_at": "2026-09-28T08:11:02+00:00",
       "number": 138,
       "reviews": [
         {
@@ -2201,12 +2204,17 @@
           "user": "anaprietonem"
         },
         {
-          "state": "APPROVED",
+          "state": "DISMISSED",
           "submitted_at": "2026-06-19T15:45:28+00:00",
           "user": "frazane"
+        },
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-09-22T11:26:16+00:00",
+          "user": "reuterbal"
         }
       ],
-      "state": "open",
+      "state": "closed",
       "title": "docs: update contributing guidelines",
       "user": "JPXKQX"
     },
@@ -2555,7 +2563,7 @@
     "157": {
       "additions": 168,
       "changed_files": 2,
-      "closed_at": null,
+      "closed_at": "2026-09-23T13:10:42+00:00",
       "coauthor_email_hashes": [],
       "coauthor_logins": [],
       "commit_authors": [
@@ -2563,11 +2571,17 @@
       ],
       "created_at": "2026-09-11T09:02:06+00:00",
       "deletions": 1048,
-      "merged": false,
-      "merged_at": null,
+      "merged": true,
+      "merged_at": "2026-09-23T13:10:42+00:00",
       "number": 157,
-      "reviews": [],
-      "state": "open",
+      "reviews": [
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-09-23T13:04:45+00:00",
+          "user": "jjlk"
+        }
+      ],
+      "state": "closed",
       "title": "test: use defaults in training configs",
       "user": "VeraChristina"
     },
@@ -2595,7 +2609,7 @@
     "159": {
       "additions": 11,
       "changed_files": 1,
-      "closed_at": null,
+      "closed_at": "2026-09-22T12:44:49+00:00",
       "coauthor_email_hashes": [],
       "coauthor_logins": [],
       "commit_authors": [
@@ -2603,8 +2617,8 @@
       ],
       "created_at": "2026-09-21T09:01:40+00:00",
       "deletions": 0,
-      "merged": false,
-      "merged_at": null,
+      "merged": true,
+      "merged_at": "2026-09-22T12:44:49+00:00",
       "number": 159,
       "reviews": [
         {
@@ -2621,9 +2635,14 @@
           "state": "COMMENTED",
           "submitted_at": "2026-09-21T10:45:40+00:00",
           "user": "dnerini"
+        },
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-09-22T11:33:07+00:00",
+          "user": "dnerini"
         }
       ],
-      "state": "open",
+      "state": "closed",
       "title": "feat: add ems award",
       "user": "mc4117"
     },
