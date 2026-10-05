@@ -2164,8 +2164,8 @@
       "created_at": "2026-09-14T16:02:46+00:00",
       "is_pull_request": true,
       "number": 342,
-      "state": "open",
-      "updated_at": "2026-09-18T13:07:06+00:00",
+      "state": "closed",
+      "updated_at": "2026-10-01T13:40:09+00:00",
       "user": "mcocdawc"
     },
     "343": {
@@ -2183,6 +2183,38 @@
       "state": "open",
       "updated_at": "2026-09-22T09:48:08+00:00",
       "user": "DeployDuck"
+    },
+    "345": {
+      "created_at": "2026-09-30T15:50:10+00:00",
+      "is_pull_request": true,
+      "number": 345,
+      "state": "closed",
+      "updated_at": "2026-10-01T13:37:12+00:00",
+      "user": "maxineofficial"
+    },
+    "346": {
+      "created_at": "2026-10-01T13:37:38+00:00",
+      "is_pull_request": true,
+      "number": 346,
+      "state": "closed",
+      "updated_at": "2026-10-01T13:59:38+00:00",
+      "user": "DeployDuck"
+    },
+    "347": {
+      "created_at": "2026-10-02T09:38:00+00:00",
+      "is_pull_request": true,
+      "number": 347,
+      "state": "open",
+      "updated_at": "2026-10-02T09:38:13+00:00",
+      "user": "b8raoult"
+    },
+    "348": {
+      "created_at": "2026-10-05T09:43:00+00:00",
+      "is_pull_request": true,
+      "number": 348,
+      "state": "open",
+      "updated_at": "2026-10-05T09:45:39+00:00",
+      "user": "gmertes"
     },
     "35": {
       "created_at": "2024-10-31T16:50:17+00:00",
@@ -2745,8 +2777,8 @@
       "user": "DeployDuck"
     }
   },
-  "last_issues_since": "2026-09-28T11:44:04.137281+00:00",
-  "last_refreshed_at": "2026-09-28T12:44:04.137281+00:00",
+  "last_issues_since": "2026-10-05T12:24:04.380833+00:00",
+  "last_refreshed_at": "2026-10-05T13:24:04.380833+00:00",
   "prs": {
     "1": {
       "additions": 54,
@@ -8781,7 +8813,7 @@
     "342": {
       "additions": 0,
       "changed_files": 2,
-      "closed_at": null,
+      "closed_at": "2026-10-01T13:40:07+00:00",
       "coauthor_email_hashes": [
         "cd29c5ac348a026a3ec5286890908fffb5bf6ab77f20672171be323a70c95026"
       ],
@@ -8791,11 +8823,17 @@
       ],
       "created_at": "2026-09-14T16:02:46+00:00",
       "deletions": 58,
-      "merged": false,
-      "merged_at": null,
+      "merged": true,
+      "merged_at": "2026-10-01T13:40:07+00:00",
       "number": 342,
-      "reviews": [],
-      "state": "open",
+      "reviews": [
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-01T13:39:06+00:00",
+          "user": "gmertes"
+        }
+      ],
+      "state": "closed",
       "title": "chore: remove pr-label-conventional-commits workflow",
       "user": "mcocdawc"
     },
@@ -8817,6 +8855,94 @@
       "state": "open",
       "title": "chore: synced file(s) with ecmwf/reusable-workflows",
       "user": "DeployDuck"
+    },
+    "345": {
+      "additions": 12,
+      "changed_files": 2,
+      "closed_at": "2026-10-01T13:37:09+00:00",
+      "coauthor_email_hashes": [],
+      "coauthor_logins": [],
+      "commit_authors": [
+        "maxineofficial"
+      ],
+      "created_at": "2026-09-30T15:50:10+00:00",
+      "deletions": 3,
+      "merged": true,
+      "merged_at": "2026-10-01T13:37:09+00:00",
+      "number": 345,
+      "reviews": [
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-01T10:56:51+00:00",
+          "user": "gmertes"
+        }
+      ],
+      "state": "closed",
+      "title": "fix(registry): fix alias pass-through when registered through a decorator",
+      "user": "maxineofficial"
+    },
+    "346": {
+      "additions": 8,
+      "changed_files": 2,
+      "closed_at": "2026-10-01T13:59:21+00:00",
+      "coauthor_email_hashes": [],
+      "coauthor_logins": [],
+      "commit_authors": [
+        "DeployDuck"
+      ],
+      "created_at": "2026-10-01T13:37:38+00:00",
+      "deletions": 1,
+      "merged": true,
+      "merged_at": "2026-10-01T13:59:21+00:00",
+      "number": 346,
+      "reviews": [
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-01T13:59:09+00:00",
+          "user": "maxineofficial"
+        }
+      ],
+      "state": "closed",
+      "title": "chore(main): Release 0.5.13",
+      "user": "DeployDuck"
+    },
+    "347": {
+      "additions": 297,
+      "changed_files": 4,
+      "closed_at": null,
+      "coauthor_email_hashes": [],
+      "coauthor_logins": [],
+      "commit_authors": [
+        "b8raoult"
+      ],
+      "created_at": "2026-10-02T09:38:00+00:00",
+      "deletions": 0,
+      "merged": false,
+      "merged_at": null,
+      "number": 347,
+      "reviews": [],
+      "state": "open",
+      "title": "feat: nexus",
+      "user": "b8raoult"
+    },
+    "348": {
+      "additions": 1,
+      "changed_files": 1,
+      "closed_at": null,
+      "coauthor_email_hashes": [],
+      "coauthor_logins": [],
+      "commit_authors": [
+        "gmertes"
+      ],
+      "created_at": "2026-10-05T09:43:00+00:00",
+      "deletions": 0,
+      "merged": false,
+      "merged_at": null,
+      "number": 348,
+      "reviews": [],
+      "state": "open",
+      "title": "feat(grib): Log path to local param db if used",
+      "user": "gmertes"
     },
     "35": {
       "additions": 183,
