@@ -13,8 +13,9 @@ import argparse
 import json
 import os
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
+from statistics import median
 
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
@@ -82,12 +83,72 @@ def classify_pr_type(title):
     return "other"
 
 
-def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
+def _pr_identities(pr):
+    """Everyone credited on a PR: opener, commit authors, co-authors.
+
+    Co-authors known only by a hashed email still count as distinct people, so
+    they get a synthetic identity that cannot collide with a GitHub login.
+    """
+    ids = set()
+    if pr.get("user"):
+        ids.add(pr["user"])
+    ids.update(pr.get("commit_authors", []))
+    ids.update(pr.get("coauthor_logins", []))
+    ids.update(f"email:{h}" for h in pr.get("coauthor_email_hashes", []))
+    return ids
+
+
+def merge_caches(caches):
+    """Combine per-repo caches into one pseudo-cache for cross-repo aggregation.
+
+    Keys are namespaced because PR and issue numbers repeat across repos.
+    """
+    merged = {"repo": "all", "prs": {}, "issues": {}}
+    for name, cache in caches.items():
+        for num, pr in cache["prs"].items():
+            merged["prs"][f"{name}#{num}"] = pr
+        for num, issue in cache["issues"].items():
+            merged["issues"][f"{name}#{num}"] = issue
+    return merged
+
+
+def build_first_contribution(caches):
+    """Map each contributor identity to the date their first PR was merged.
+
+    Computed over all repos and all time, so it stays correct for historical
+    snapshots: a first contribution can only move earlier, never later.
+    """
+    first = {}
+    for cache in caches.values():
+        for pr in cache["prs"].values():
+            if not pr.get("merged") or not pr.get("merged_at"):
+                continue
+            when = datetime.fromisoformat(pr["merged_at"])
+            for identity in _pr_identities(pr):
+                if identity not in first or when < first[identity]:
+                    first[identity] = when
+    return first
+
+
+def _resolve_identity(identity, github_to_org, email_to_org):
+    """Org for a login or a synthetic `email:<hash>` co-author identity."""
+    if identity.startswith("email:"):
+        return email_to_org.get(identity[len("email:"):], "Unknown")
+    return _resolve_login(identity, github_to_org)
+
+
+def _hours_between(start, end):
+    return (end - start).total_seconds() / 3600
+
+
+def snapshot_repo(cache, github_to_org, email_to_org, months, as_of, first_seen=None):
     """Compute a per-repo snapshot from cached raw events.
 
-    Same output schema as before so plot.py and archived snapshots stay compatible.
+    The original keys are unchanged so archived snapshots stay comparable; newer
+    keys (people, review matrix, latency, size) are additive.
     """
     since = as_of - relativedelta(months=months)
+    first_seen = first_seen or {}
 
     # --- Issues (skip PRs that come back through PyGithub's issues API) ---
     user_issue_count = Counter()
@@ -107,6 +168,10 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
     # --- Merged PRs, deduplicated per org per PR ---
     org_pr_count = Counter()
     org_pr_count_by_type = {}
+    org_contributors = defaultdict(set)
+    org_new_contributors = defaultdict(set)
+    org_size = defaultdict(Counter)
+    org_pr_additions = defaultdict(list)
     for pr in cache["prs"].values():
         if not pr.get("merged"):
             continue
@@ -121,20 +186,16 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
         if merged_at > as_of:
             continue
 
-        # Login-based authors: opener + commit authors + noreply co-authors.
-        logins = set()
-        if pr.get("user"):
-            logins.add(pr["user"])
-        logins.update(pr.get("commit_authors", []))
-        logins.update(pr.get("coauthor_logins", []))
-
         orgs = set()
-        for login in logins:
-            org = _resolve_login(login, github_to_org)
-            if org:
-                orgs.add(org)
-        for h in pr.get("coauthor_email_hashes", []):
-            orgs.add(email_to_org.get(h, "Unknown"))
+        for identity in _pr_identities(pr):
+            org = _resolve_identity(identity, github_to_org, email_to_org)
+            if not org:
+                continue
+            orgs.add(org)
+            org_contributors[org].add(identity)
+            first = first_seen.get(identity)
+            if first and since <= first <= as_of:
+                org_new_contributors[org].add(identity)
 
         pr_type = classify_pr_type(pr.get("title"))
         if pr_type == "other":
@@ -143,10 +204,19 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
         for org in orgs:
             org_pr_count[org] += 1
             org_pr_count_by_type.setdefault(pr_type, Counter())[org] += 1
+            org_size[org]["additions"] += pr.get("additions") or 0
+            org_size[org]["deletions"] += pr.get("deletions") or 0
+            org_size[org]["changed_files"] += pr.get("changed_files") or 0
+            org_pr_additions[org].append(pr.get("additions") or 0)
 
     # --- Reviews on PRs created in-window (preserves previous semantics) ---
+    # The matrix and outcome counts below additionally drop self-reviews, since
+    # an author commenting on their own PR is not cross-org review effort.
     user_total_review_count = Counter()
     user_unique_review_count = Counter()
+    org_reviewers = defaultdict(set)
+    review_matrix = defaultdict(Counter)
+    org_review_states = defaultdict(Counter)
     for pr in cache["prs"].values():
         created_iso = pr.get("created_at")
         if not created_iso:
@@ -154,7 +224,10 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
         created_at = datetime.fromisoformat(created_iso)
         if not (since <= created_at <= as_of):
             continue
+        opener = pr.get("user")
+        author_org = _resolve_login(opener, github_to_org) if opener else None
         seen = set()
+        credited = set()
         for review in pr.get("reviews", []):
             user = review.get("user")
             submitted_iso = review.get("submitted_at")
@@ -168,8 +241,64 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
                 user_unique_review_count[user] += 1
                 seen.add(user)
 
+            if user == opener:
+                continue
+            reviewer_org = _resolve_login(user, github_to_org)
+            if not reviewer_org:
+                continue
+            org_reviewers[reviewer_org].add(user)
+            org_review_states[reviewer_org][review.get("state") or "UNKNOWN"] += 1
+            if author_org and user not in credited:
+                review_matrix[reviewer_org][author_org] += 1
+                credited.add(user)
+
     org_total_review_count = _aggregate_by_org(user_total_review_count, github_to_org)
     org_unique_review_count = _aggregate_by_org(user_unique_review_count, github_to_org)
+
+    # --- Turnaround on PRs merged in-window, by the opener's org ---
+    # Merged-in-window (rather than created-in-window) avoids censoring: every
+    # PR counted here has a complete, observed lifetime.
+    merge_hours = defaultdict(list)
+    first_review_hours = defaultdict(list)
+    for pr in cache["prs"].values():
+        if not pr.get("merged"):
+            continue
+        created_iso = pr.get("created_at")
+        merged_iso = pr.get("merged_at")
+        opener = pr.get("user")
+        if not created_iso or not merged_iso or not opener:
+            continue
+        created_at = datetime.fromisoformat(created_iso)
+        merged_at = datetime.fromisoformat(merged_iso)
+        if not (since <= merged_at <= as_of):
+            continue
+        org = _resolve_login(opener, github_to_org)
+        if not org:
+            continue
+        merge_hours[org].append(_hours_between(created_at, merged_at))
+
+        review_times = [
+            datetime.fromisoformat(r["submitted_at"])
+            for r in pr.get("reviews", [])
+            if r.get("submitted_at") and r.get("user") and r["user"] != opener
+        ]
+        if review_times:
+            first_review_hours[org].append(_hours_between(created_at, min(review_times)))
+
+    latency = {}
+    for org in set(merge_hours) | set(first_review_hours):
+        entry = {"merged_prs": len(merge_hours.get(org, []))}
+        if merge_hours.get(org):
+            entry["median_hours_to_merge"] = round(median(merge_hours[org]), 1)
+        if first_review_hours.get(org):
+            entry["median_hours_to_first_review"] = round(median(first_review_hours[org]), 1)
+            entry["reviewed_prs"] = len(first_review_hours[org])
+        latency[org] = entry
+
+    # --- Attribution quality: share of credits we could not place with an org ---
+    credit_total = sum(org_pr_count.values()) + sum(org_issue_count.values()) + sum(org_unique_review_count.values())
+    credit_unknown = (org_pr_count.get("Unknown", 0) + org_issue_count.get("Unknown", 0)
+                      + org_unique_review_count.get("Unknown", 0))
 
     return {
         "issues": dict(org_issue_count),
@@ -177,6 +306,20 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of):
         "pull_requests_by_type": {t: dict(c) for t, c in org_pr_count_by_type.items()},
         "total_reviews": dict(org_total_review_count),
         "unique_reviews": dict(org_unique_review_count),
+        "contributors": {org: len(people) for org, people in org_contributors.items()},
+        "new_contributors": {org: len(people) for org, people in org_new_contributors.items()},
+        "reviewers": {org: len(people) for org, people in org_reviewers.items()},
+        "pr_size": {
+            org: {
+                **dict(counts),
+                "median_additions": round(median(org_pr_additions[org]), 1),
+            }
+            for org, counts in org_size.items()
+        },
+        "review_matrix": {reviewer: dict(targets) for reviewer, targets in review_matrix.items()},
+        "review_states": {org: dict(states) for org, states in org_review_states.items()},
+        "latency": latency,
+        "attribution": {"total_credits": credit_total, "unknown_credits": credit_unknown},
     }
 
 
@@ -200,6 +343,32 @@ def _print_repo_summary(repo_name, snap, months):
     print(f"\nUnique Code Reviews by Organization in {repo_name} in the last {months} months:")
     for org, count in Counter(snap["unique_reviews"]).most_common():
         print(f"- {org}: {count} unique reviews")
+
+
+def _print_aggregate_summary(agg, months):
+    print(f"\n==============================")
+    print(f" All repos combined ({months} months):")
+    print(f"==============================")
+    print("\nPeople active per organisation (distinct, deduplicated across repos):")
+    for org, count in Counter(agg["contributors"]).most_common():
+        new = agg["new_contributors"].get(org, 0)
+        reviewers = agg["reviewers"].get(org, 0)
+        suffix = f", {new} first-time" if new else ""
+        print(f"- {org}: {count} contributor(s){suffix}, {reviewers} reviewer(s)")
+
+    print("\nMedian turnaround on merged PRs by the opener's organisation:")
+    for org, entry in sorted(agg["latency"].items(), key=lambda kv: -kv[1]["merged_prs"]):
+        merge = entry.get("median_hours_to_merge")
+        review = entry.get("median_hours_to_first_review")
+        merge_s = f"{merge / 24:.1f}d to merge" if merge is not None else "n/a"
+        review_s = f"{review / 24:.1f}d to first review" if review is not None else "no reviews"
+        print(f"- {org}: {merge_s}, {review_s} (n={entry['merged_prs']})")
+
+    attribution = agg["attribution"]
+    if attribution["total_credits"]:
+        known = 100 * (1 - attribution["unknown_credits"] / attribution["total_credits"])
+        print(f"\nAttribution: {known:.1f}% of credits map to a known organisation "
+              f"({attribution['unknown_credits']} of {attribution['total_credits']} unknown).")
 
 
 def refresh_all_caches(email_to_org):
@@ -246,16 +415,25 @@ if __name__ == "__main__":
         print("Cache refreshed; snapshot skipped (--refresh-only).")
         raise SystemExit(0)
 
+    caches = {r: load_cache(r) for r in REPO_LIST}
+    first_seen = build_first_contribution(caches)
+
     results = {
         "generated_at": as_of.isoformat(),
         "months": args.months,
         "repos": {},
     }
     for repo_name in REPO_LIST:
-        cache = load_cache(repo_name)
-        snap = snapshot_repo(cache, github_to_org, email_to_org, args.months, as_of)
+        snap = snapshot_repo(caches[repo_name], github_to_org, email_to_org,
+                             args.months, as_of, first_seen)
         results["repos"][repo_name] = snap
         _print_repo_summary(repo_name, snap, args.months)
+
+    # Distinct-people metrics cannot be summed across repos, so the cross-repo
+    # view is pivoted from the combined cache instead.
+    results["aggregate"] = snapshot_repo(merge_caches(caches), github_to_org, email_to_org,
+                                         args.months, as_of, first_seen)
+    _print_aggregate_summary(results["aggregate"], args.months)
 
     if is_today:
         with open("results.json", "w") as f:
