@@ -2157,7 +2157,7 @@
       "is_pull_request": true,
       "number": 341,
       "state": "open",
-      "updated_at": "2026-09-07T18:05:26+00:00",
+      "updated_at": "2026-10-05T18:42:03+00:00",
       "user": "pre-commit-ci[bot]"
     },
     "342": {
@@ -2212,8 +2212,16 @@
       "created_at": "2026-10-05T09:43:00+00:00",
       "is_pull_request": true,
       "number": 348,
-      "state": "open",
-      "updated_at": "2026-10-05T09:45:39+00:00",
+      "state": "closed",
+      "updated_at": "2026-10-09T14:08:11+00:00",
+      "user": "gmertes"
+    },
+    "349": {
+      "created_at": "2026-10-08T08:31:14+00:00",
+      "is_pull_request": true,
+      "number": 349,
+      "state": "closed",
+      "updated_at": "2026-10-09T13:09:01+00:00",
       "user": "gmertes"
     },
     "35": {
@@ -2223,6 +2231,22 @@
       "state": "closed",
       "updated_at": "2024-11-01T11:21:43+00:00",
       "user": "b8raoult"
+    },
+    "350": {
+      "created_at": "2026-10-08T10:34:14+00:00",
+      "is_pull_request": false,
+      "number": 350,
+      "state": "open",
+      "updated_at": "2026-10-08T10:34:29+00:00",
+      "user": "JPXKQX"
+    },
+    "351": {
+      "created_at": "2026-10-09T13:09:28+00:00",
+      "is_pull_request": true,
+      "number": 351,
+      "state": "open",
+      "updated_at": "2026-10-09T14:08:35+00:00",
+      "user": "DeployDuck"
     },
     "36": {
       "created_at": "2024-11-01T10:42:23+00:00",
@@ -2777,8 +2801,8 @@
       "user": "DeployDuck"
     }
   },
-  "last_issues_since": "2026-10-05T12:24:04.380833+00:00",
-  "last_refreshed_at": "2026-10-05T13:24:04.380833+00:00",
+  "last_issues_since": "2026-10-12T13:14:21.343459+00:00",
+  "last_refreshed_at": "2026-10-12T14:14:21.343459+00:00",
   "prs": {
     "1": {
       "additions": 54,
@@ -8792,8 +8816,8 @@
       "user": "b8raoult"
     },
     "341": {
-      "additions": 45,
-      "changed_files": 25,
+      "additions": 5,
+      "changed_files": 1,
       "closed_at": null,
       "coauthor_email_hashes": [],
       "coauthor_logins": [],
@@ -8801,7 +8825,7 @@
         "pre-commit-ci[bot]"
       ],
       "created_at": "2026-09-07T18:03:20+00:00",
-      "deletions": 60,
+      "deletions": 5,
       "merged": false,
       "merged_at": null,
       "number": 341,
@@ -8928,7 +8952,7 @@
     "348": {
       "additions": 1,
       "changed_files": 1,
-      "closed_at": null,
+      "closed_at": "2026-10-09T14:08:09+00:00",
       "coauthor_email_hashes": [],
       "coauthor_logins": [],
       "commit_authors": [
@@ -8936,12 +8960,48 @@
       ],
       "created_at": "2026-10-05T09:43:00+00:00",
       "deletions": 0,
-      "merged": false,
-      "merged_at": null,
+      "merged": true,
+      "merged_at": "2026-10-09T14:08:09+00:00",
       "number": 348,
-      "reviews": [],
-      "state": "open",
+      "reviews": [
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-09T13:59:48+00:00",
+          "user": "mchantry"
+        }
+      ],
+      "state": "closed",
       "title": "feat(grib): Log path to local param db if used",
+      "user": "gmertes"
+    },
+    "349": {
+      "additions": 96,
+      "changed_files": 2,
+      "closed_at": "2026-10-09T13:08:58+00:00",
+      "coauthor_email_hashes": [],
+      "coauthor_logins": [],
+      "commit_authors": [
+        "gmertes"
+      ],
+      "created_at": "2026-10-08T08:31:14+00:00",
+      "deletions": 0,
+      "merged": true,
+      "merged_at": "2026-10-09T13:08:58+00:00",
+      "number": 349,
+      "reviews": [
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-08T15:08:46+00:00",
+          "user": "floriankrb"
+        },
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-08T15:29:58+00:00",
+          "user": "maxineofficial"
+        }
+      ],
+      "state": "closed",
+      "title": "feat(logs): Add OnceLogger",
       "user": "gmertes"
     },
     "35": {
@@ -8969,6 +9029,25 @@
       "state": "closed",
       "title": "Feature/registry",
       "user": "b8raoult"
+    },
+    "351": {
+      "additions": 9,
+      "changed_files": 2,
+      "closed_at": null,
+      "coauthor_email_hashes": [],
+      "coauthor_logins": [],
+      "commit_authors": [
+        "DeployDuck"
+      ],
+      "created_at": "2026-10-09T13:09:28+00:00",
+      "deletions": 1,
+      "merged": false,
+      "merged_at": null,
+      "number": 351,
+      "reviews": [],
+      "state": "open",
+      "title": "chore(main): Release 0.5.14",
+      "user": "DeployDuck"
     },
     "36": {
       "additions": 7,
