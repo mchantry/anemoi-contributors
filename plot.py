@@ -233,7 +233,7 @@ def build_people_figure(agg, months):
 
 
 def build_review_matrix_figure(agg, months):
-    """Who reviews whose code. Colour is row share, so every org is readable."""
+    """Who reviews whose code, normalised by row (effort given) or column (review received)."""
     matrix = agg.get("review_matrix")
     if not matrix:
         return ""
@@ -249,28 +249,61 @@ def build_review_matrix_figure(agg, months):
     if not reviewers or not authors:
         return ""
 
-    z, text = [], []
-    for rev in reviewers:
-        targets = matrix.get(rev, {})
-        total = sum(v for a, v in targets.items() if a not in EXCLUDED_ORGS) or 1
-        z.append([100 * targets.get(a, 0) / total for a in authors])
-        text.append([str(targets.get(a, 0)) for a in authors])
+    counts = [[matrix.get(rev, {}).get(author, 0) for author in authors] for rev in reviewers]
+    text = [[str(v) for v in row] for row in counts]
+    row_totals = [sum(row) or 1 for row in counts]
+    col_totals = [sum(row[j] for row in counts) or 1 for j in range(len(authors))]
+
+    z_row = [[100 * v / row_totals[i] for v in row] for i, row in enumerate(counts)]
+    z_col = [[100 * v / col_totals[j] for j, v in enumerate(row)] for row in counts]
+
+    base_title = f"Who reviews whom (last {months} month{'s' if months != 1 else ''}) — cell = PRs reviewed, colour = "
+    hover_row = "%{y} reviewed %{x}: %{text} PRs (%{z:.0f}% of %{y}'s reviewing)<extra></extra>"
+    hover_col = "%{y} reviewed %{x}: %{text} PRs (%{z:.0f}% of the review %{x} received)<extra></extra>"
 
     fig = go.Figure(
         go.Heatmap(
-            z=z, x=authors, y=reviewers, text=text, texttemplate="%{text}",
+            z=z_row, x=authors, y=reviewers, text=text, texttemplate="%{text}",
             colorscale="Blues", zmin=0, zmax=100,
             colorbar=dict(title="% of<br>reviewer's<br>effort"),
-            hovertemplate="%{y} reviewed %{x}: %{text} PRs (%{z:.0f}% of %{y}'s reviewing)<extra></extra>",
+            hovertemplate=hover_row,
         )
     )
     fig.update_layout(
-        title=(f"Who reviews whom (last {months} month{'s' if months != 1 else ''}) — "
-               "cell = PRs reviewed, colour = share of that reviewer's effort"),
+        title=base_title + "share of that reviewer's effort",
         xaxis_title="Organisation whose PR was reviewed",
         yaxis_title="Reviewing organisation",
-        height=130 + 34 * len(reviewers),
+        height=170 + 34 * len(reviewers),
         yaxis=dict(autorange="reversed"),
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="left",
+                x=1.0,
+                xanchor="right",
+                y=1.10,
+                buttons=[
+                    dict(
+                        label="Normalise by row",
+                        method="update",
+                        args=[
+                            {"z": [z_row], "hovertemplate": hover_row,
+                             "colorbar.title.text": "% of<br>reviewer's<br>effort"},
+                            {"title.text": base_title + "share of that reviewer's effort"},
+                        ],
+                    ),
+                    dict(
+                        label="Normalise by column",
+                        method="update",
+                        args=[
+                            {"z": [z_col], "hovertemplate": hover_col,
+                             "colorbar.title.text": "% of<br>review<br>received"},
+                            {"title.text": base_title + "share of the review that org received"},
+                        ],
+                    ),
+                ],
+            )
+        ],
     )
     return fig.to_html(full_html=False, include_plotlyjs=False)
 
@@ -449,7 +482,9 @@ def build_extra_sections(agg, months):
          build_people_figure(agg, months)),
         ("Who reviews whom",
          "Review is where organisations actually meet. Cells on the diagonal are organisations "
-         "reviewing their own PRs; everything off it is cross-organisation effort.",
+         "reviewing their own PRs; everything off it is cross-organisation effort. Cells always show "
+         "the PR count — the switch changes what the colour means: normalised by row, where each "
+         "organisation directs its reviewing; by column, where each organisation's review comes from.",
          build_review_matrix_figure(agg, months)),
         ("Review outcomes",
          "Whether reviews approve, request changes, or just comment.",
@@ -696,7 +731,10 @@ html = f"""<!DOCTYPE html>
     Anemoi falls inside this window.</li>
     <li><strong>Who reviews whom:</strong> for PRs created in the period, each reviewer is counted once per PR and
     attributed to the organisation of the PR's opener. Authors reviewing their own PRs are excluded here, though they
-    remain in the Total/Unique Reviews counts above.</li>
+    remain in the Total/Unique Reviews counts above. Raw counts differ by orders of magnitude between organisations,
+    so the colour is normalised rather than absolute: <em>by row</em> each reviewing organisation's cells sum to 100%
+    (where it directs its effort), <em>by column</em> each reviewed organisation's cells sum to 100% (where its review
+    comes from).</li>
     <li><strong>Review outcomes:</strong> every review submission on in-window PRs by state, self-reviews excluded.
     GitHub records a plain comment as <code>COMMENTED</code>, so it is the most common state by far.</li>
     <li><strong>What contributors get back:</strong> medians over PRs <em>merged</em> in the window — measuring merged
