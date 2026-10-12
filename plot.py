@@ -25,6 +25,15 @@ REVIEW_STATE_COLORS = {
     "COMMENTED": "#8d99ae",
     "DISMISSED": "#c9c9c9",
 }
+# GitHub overwrites a review's state when it is dismissed, so DISMISSED is not a
+# kind of review anyone gives: it is an approval or change-request that a later
+# push (or a manual dismissal) invalidated. "Superseded" says that plainly.
+REVIEW_STATE_LABELS = {
+    "APPROVED": "Approved",
+    "CHANGES_REQUESTED": "Changes requested",
+    "COMMENTED": "Commented",
+    "DISMISSED": "Superseded",
+}
 
 PCT_BUTTONS = [
     dict(
@@ -321,13 +330,14 @@ def build_review_outcomes_figure(agg, months):
     seen_states = [s for s in REVIEW_STATE_ORDER if any(states[o].get(s) for o in orgs)]
     fig = go.Figure()
     for state in seen_states:
+        label = REVIEW_STATE_LABELS.get(state, state.replace("_", " ").title())
         fig.add_trace(
             go.Bar(
-                name=state.replace("_", " ").title(),
+                name=label,
                 x=orgs,
                 y=[states[o].get(state, 0) for o in orgs],
                 marker_color=REVIEW_STATE_COLORS.get(state),
-                hovertemplate=f"%{{x}} — {state}: %{{y}}<extra></extra>",
+                hovertemplate=f"%{{x}} — {label}: %{{y}}<extra></extra>",
             )
         )
     fig.update_layout(
@@ -487,7 +497,9 @@ def build_extra_sections(agg, months):
          "organisation directs its reviewing; by column, where each organisation's review comes from.",
          build_review_matrix_figure(agg, months)),
         ("Review outcomes",
-         "Whether reviews approve, request changes, or just comment.",
+         "Whether reviews approve, request changes, or just comment. <em>Superseded</em> is an approval "
+         "or change request that a later push invalidated, so the approval count is a floor rather than "
+         "an exact total.",
          build_review_outcomes_figure(agg, months)),
         ("What contributors get back",
          "How long a PR waits for its first review and for merge, by the organisation that opened it.",
@@ -736,7 +748,13 @@ html = f"""<!DOCTYPE html>
     (where it directs its effort), <em>by column</em> each reviewed organisation's cells sum to 100% (where its review
     comes from).</li>
     <li><strong>Review outcomes:</strong> every review submission on in-window PRs by state, self-reviews excluded.
-    GitHub records a plain comment as <code>COMMENTED</code>, so it is the most common state by far.</li>
+    GitHub records a plain comment as <code>COMMENTED</code>, so it is the most common state by far.
+    <em>Superseded</em> is GitHub's <code>DISMISSED</code> state: when a review is dismissed — most often
+    automatically, by branch protection retiring stale approvals as soon as new commits are pushed — GitHub
+    overwrites the state on the original review, so whether it was an approval or a change request is no longer
+    recoverable from the API. Those reviews therefore appear here rather than under Approved, which makes the
+    approval count a lower bound. In the current data the same reviewer goes on to approve the same PR again in
+    roughly 40% of superseded reviews, which is the signature of the approve, push, re-approve cycle.</li>
     <li><strong>What contributors get back:</strong> medians over PRs <em>merged</em> in the window — measuring merged
     rather than opened PRs means every PR counted has a complete, observed lifetime. Attributed to the opener's
     organisation. Only organisations with at least {MIN_PRS_FOR_LATENCY} merged PRs are shown, as medians over one or
