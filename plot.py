@@ -272,14 +272,14 @@ def build_review_matrix_figure(agg, months):
 
     fig = go.Figure(
         go.Heatmap(
-            z=z_row, x=authors, y=reviewers, text=text, texttemplate="%{text}",
+            z=z_col, x=authors, y=reviewers, text=text, texttemplate="%{text}",
             colorscale="Blues", zmin=0, zmax=100,
-            colorbar=dict(title="% of<br>reviewer's<br>effort"),
-            hovertemplate=hover_row,
+            colorbar=dict(title="% of<br>review<br>received"),
+            hovertemplate=hover_col,
         )
     )
     fig.update_layout(
-        title=base_title + "share of that reviewer's effort",
+        title=base_title + "share of the review that org received",
         xaxis_title="Organisation whose PR was reviewed",
         yaxis_title="Reviewing organisation",
         height=170 + 34 * len(reviewers),
@@ -293,21 +293,21 @@ def build_review_matrix_figure(agg, months):
                 y=1.10,
                 buttons=[
                     dict(
-                        label="Normalise by row",
-                        method="update",
-                        args=[
-                            {"z": [z_row], "hovertemplate": hover_row,
-                             "colorbar.title.text": "% of<br>reviewer's<br>effort"},
-                            {"title.text": base_title + "share of that reviewer's effort"},
-                        ],
-                    ),
-                    dict(
                         label="Normalise by column",
                         method="update",
                         args=[
                             {"z": [z_col], "hovertemplate": hover_col,
                              "colorbar.title.text": "% of<br>review<br>received"},
                             {"title.text": base_title + "share of the review that org received"},
+                        ],
+                    ),
+                    dict(
+                        label="Normalise by row",
+                        method="update",
+                        args=[
+                            {"z": [z_row], "hovertemplate": hover_row,
+                             "colorbar.title.text": "% of<br>reviewer's<br>effort"},
+                            {"title.text": base_title + "share of that reviewer's effort"},
                         ],
                     ),
                 ],
@@ -337,13 +337,15 @@ def build_review_outcomes_figure(agg, months):
                 x=orgs,
                 y=[states[o].get(state, 0) for o in orgs],
                 marker_color=REVIEW_STATE_COLORS.get(state),
-                hovertemplate=f"%{{x}} — {label}: %{{y}}<extra></extra>",
+                hovertemplate=f"{label} by %{{x}}: %{{y}}<extra></extra>",
             )
         )
     fig.update_layout(
         barmode="stack",
-        title=f"Review outcomes by organisation (last {months} month{'s' if months != 1 else ''}, self-reviews excluded)",
+        title=(f"Review outcomes by reviewing organisation "
+               f"(last {months} month{'s' if months != 1 else ''}, self-reviews excluded)"),
         height=450,
+        xaxis_title="Reviewing organisation",
         yaxis_title="review submissions",
         updatemenus=PCT_BUTTONS,
     )
@@ -493,13 +495,15 @@ def build_extra_sections(agg, months):
         ("Who reviews whom",
          "Review is where organisations actually meet. Cells on the diagonal are organisations "
          "reviewing their own PRs; everything off it is cross-organisation effort. Cells always show "
-         "the PR count — the switch changes what the colour means: normalised by row, where each "
-         "organisation directs its reviewing; by column, where each organisation's review comes from.",
+         "the PR count — the switch changes what the colour means: by column (the default), where the "
+         "review an organisation receives comes from; by row, where each organisation directs its own "
+         "reviewing.",
          build_review_matrix_figure(agg, months)),
         ("Review outcomes",
-         "Whether reviews approve, request changes, or just comment. <em>Superseded</em> is an approval "
-         "or change request that a later push invalidated, so the approval count is a floor rather than "
-         "an exact total.",
+         "Whether reviews approve, request changes, or just comment — counted against the organisation "
+         "<em>giving</em> the review, not the one whose PR it was. <em>Superseded</em> is an approval or "
+         "change request that a later push invalidated, so the approval count is a floor rather than an "
+         "exact total.",
          build_review_outcomes_figure(agg, months)),
         ("What contributors get back",
          "How long a PR waits for its first review and for merge, by the organisation that opened it.",
@@ -744,10 +748,12 @@ html = f"""<!DOCTYPE html>
     <li><strong>Who reviews whom:</strong> for PRs created in the period, each reviewer is counted once per PR and
     attributed to the organisation of the PR's opener. Authors reviewing their own PRs are excluded here, though they
     remain in the Total/Unique Reviews counts above. Raw counts differ by orders of magnitude between organisations,
-    so the colour is normalised rather than absolute: <em>by row</em> each reviewing organisation's cells sum to 100%
-    (where it directs its effort), <em>by column</em> each reviewed organisation's cells sum to 100% (where its review
-    comes from).</li>
-    <li><strong>Review outcomes:</strong> every review submission on in-window PRs by state, self-reviews excluded.
+    so the colour is normalised rather than absolute: <em>by column</em> (the default) each reviewed organisation's
+    cells sum to 100%, showing where the review it receives comes from; <em>by row</em> each reviewing organisation's
+    cells sum to 100%, showing where it directs its effort.</li>
+    <li><strong>Review outcomes:</strong> every review submission on in-window PRs by state, grouped by the
+    organisation of the reviewer who submitted it rather than the organisation whose PR was under review;
+    self-reviews excluded.
     GitHub records a plain comment as <code>COMMENTED</code>, so it is the most common state by far.
     <em>Superseded</em> is GitHub's <code>DISMISSED</code> state: when a review is dismissed — most often
     automatically, by branch protection retiring stale approvals as soon as new commits are pushed — GitHub
