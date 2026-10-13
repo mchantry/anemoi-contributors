@@ -7,8 +7,8 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 
 # --- Shared configuration -----------------------------------------------------
-metric_keys = ["issues", "pull_requests", "total_reviews", "unique_reviews"]
-metric_labels = ["Issues", "PRs", "Total Reviews", "Unique Reviews"]
+metric_keys = ["issues", "pull_requests", "prs_reviewed"]
+metric_labels = ["Issues", "PRs", "PRs Reviewed"]
 # Orgs excluded from charts entirely (still present in results.json for anyone who wants them).
 EXCLUDED_ORGS = {"Bots", "CodeAgents"}
 KNOWN_TYPE_ORDER = ["feat", "fix", "refactor", "perf", "test", "docs", "ci", "build", "chore", "style"]
@@ -579,7 +579,7 @@ def build_trend_figures(snapshots, color_map):
             for org in trend_orgs:
                 trend[key][org].append(totals.get(org, 0))
 
-    fig = make_subplots(rows=2, cols=2, subplot_titles=metric_labels)
+    fig = make_subplots(rows=1, cols=len(metric_keys), subplot_titles=metric_labels)
     for metric_idx, key in enumerate(metric_keys):
         for org in trend_orgs:
             fig.add_trace(
@@ -589,13 +589,13 @@ def build_trend_figures(snapshots, color_map):
                     line=dict(color=color_map[org]),
                     hovertemplate=f"{org}: %{{y}} on %{{x}}<extra></extra>",
                 ),
-                row=metric_idx // 2 + 1, col=metric_idx % 2 + 1,
+                row=1, col=metric_idx + 1,
             )
     months = snapshots[-1][1].get("months", 3)
     fig.update_layout(
         title=(f"Trends across snapshots ({len(snapshots)} runs) — "
                f"each point is a rolling {months}-month window ending on that date, so adjacent points overlap"),
-        height=700,
+        height=450,
         legend_title="Organisation",
     )
     volume_div = fig.to_html(full_html=False, include_plotlyjs=False)
@@ -736,8 +736,12 @@ html = f"""<!DOCTYPE html>
     Contributors are identified as: the PR opener, any commit author, and any <code>Co-authored-by:</code> trailer
     entries in commit messages (resolved via GitHub's noreply address format or a manually maintained email mapping).
     Each organisation is counted at most once per PR, even if multiple members contributed.</li>
-    <li><strong>Total Reviews:</strong> all review submissions on PRs created in the period, grouped by the reviewer's organisation.</li>
-    <li><strong>Unique Reviews:</strong> as above, but each reviewer is counted at most once per PR.</li>
+    <li><strong>PRs Reviewed:</strong> PRs an organisation reviewed, counted once per organisation per PR regardless
+    of how many of its people reviewed or how many comments they left, and attributed to the period in which the
+    <em>review</em> was submitted rather than the period the PR was opened. Authors reviewing their own PRs are not
+    counted. This replaces the earlier Total Reviews and Unique Reviews: GitHub files every batch of inline comments
+    as its own review record, so two thirds of those counts were comment batches and a further 30% were self-reviews,
+    which meant the figures tracked commenting style more than review effort.</li>
     <li><strong>Merged PR Types:</strong> the same merged PR counts above broken down by Conventional Commits prefix
     (<code>feat</code>, <code>fix</code>, <code>refactor</code>, <code>docs</code>, etc.) parsed from the PR title.
     PRs whose title does not match a known prefix are grouped as <code>other</code>.</li>
@@ -745,13 +749,13 @@ html = f"""<!DOCTYPE html>
     counted once. A contributor is anyone credited on a merged PR; a co-author identified only by email address counts
     as one person via a salted hash of that address. <em>First-time</em> means their earliest merged PR anywhere in
     Anemoi falls inside this window.</li>
-    <li><strong>Who reviews whom:</strong> for PRs created in the period, each reviewer is counted once per PR and
-    attributed to the organisation of the PR's opener. Authors reviewing their own PRs are excluded here, though they
-    remain in the Total/Unique Reviews counts above. Raw counts differ by orders of magnitude between organisations,
+    <li><strong>Who reviews whom:</strong> the same reviews as PRs Reviewed, split by the organisation of the PR's
+    opener, so each cell is a count of distinct PRs. Raw counts differ by orders of magnitude between organisations,
     so the colour is normalised rather than absolute: <em>by column</em> (the default) each reviewed organisation's
     cells sum to 100%, showing where the review it receives comes from; <em>by row</em> each reviewing organisation's
     cells sum to 100%, showing where it directs its effort.</li>
-    <li><strong>Review outcomes:</strong> every review submission on in-window PRs by state, grouped by the
+    <li><strong>Review outcomes:</strong> every review submitted in the period by state — the one place submissions
+    are counted individually rather than once per PR, since the question is what verdicts were given — grouped by the
     organisation of the reviewer who submitted it rather than the organisation whose PR was under review;
     self-reviews excluded.
     GitHub records a plain comment as <code>COMMENTED</code>, so it is the most common state by far.

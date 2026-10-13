@@ -209,51 +209,40 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of, first_seen=
             org_size[org]["changed_files"] += pr.get("changed_files") or 0
             org_pr_additions[org].append(pr.get("additions") or 0)
 
-    # --- Reviews on PRs created in-window (preserves previous semantics) ---
-    # The matrix and outcome counts below additionally drop self-reviews, since
-    # an author commenting on their own PR is not cross-org review effort.
-    user_total_review_count = Counter()
-    user_unique_review_count = Counter()
+    # --- Reviews submitted in-window, whenever the PR itself was opened ---
+    # Self-reviews are dropped: an author commenting on their own PR is not
+    # review effort. Counts are per org per PR, matching how PRs are credited,
+    # so a chatty reviewer and a terse one score the same on one PR.
     org_reviewers = defaultdict(set)
     review_matrix = defaultdict(Counter)
     org_review_states = defaultdict(Counter)
-    for pr in cache["prs"].values():
-        created_iso = pr.get("created_at")
-        if not created_iso:
-            continue
-        created_at = datetime.fromisoformat(created_iso)
-        if not (since <= created_at <= as_of):
-            continue
+    org_prs_reviewed = defaultdict(set)
+    for pr_key, pr in cache["prs"].items():
         opener = pr.get("user")
         author_org = _resolve_login(opener, github_to_org) if opener else None
-        seen = set()
-        credited = set()
         for review in pr.get("reviews", []):
             user = review.get("user")
             submitted_iso = review.get("submitted_at")
-            if not user or not submitted_iso:
+            if not user or not submitted_iso or user == opener:
                 continue
             submitted_at = datetime.fromisoformat(submitted_iso)
-            if submitted_at > as_of:
-                continue
-            user_total_review_count[user] += 1
-            if user not in seen:
-                user_unique_review_count[user] += 1
-                seen.add(user)
-
-            if user == opener:
+            if not (since <= submitted_at <= as_of):
                 continue
             reviewer_org = _resolve_login(user, github_to_org)
             if not reviewer_org:
                 continue
             org_reviewers[reviewer_org].add(user)
             org_review_states[reviewer_org][review.get("state") or "UNKNOWN"] += 1
-            if author_org and user not in credited:
-                review_matrix[reviewer_org][author_org] += 1
-                credited.add(user)
+            org_prs_reviewed[reviewer_org].add(pr_key)
+            if author_org:
+                review_matrix[reviewer_org][(author_org, pr_key)] = 1
 
-    org_total_review_count = _aggregate_by_org(user_total_review_count, github_to_org)
-    org_unique_review_count = _aggregate_by_org(user_unique_review_count, github_to_org)
+    org_prs_reviewed_count = {org: len(prs) for org, prs in org_prs_reviewed.items()}
+    # Collapse the (author org, PR) keys down to one count of distinct PRs per pair.
+    review_matrix = {
+        reviewer: Counter(author for author, _ in pairs)
+        for reviewer, pairs in review_matrix.items()
+    }
 
     # --- Turnaround on PRs merged in-window, by the opener's org ---
     # Merged-in-window (rather than created-in-window) avoids censoring: every
@@ -296,16 +285,15 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of, first_seen=
         latency[org] = entry
 
     # --- Attribution quality: share of credits we could not place with an org ---
-    credit_total = sum(org_pr_count.values()) + sum(org_issue_count.values()) + sum(org_unique_review_count.values())
+    credit_total = sum(org_pr_count.values()) + sum(org_issue_count.values()) + sum(org_prs_reviewed_count.values())
     credit_unknown = (org_pr_count.get("Unknown", 0) + org_issue_count.get("Unknown", 0)
-                      + org_unique_review_count.get("Unknown", 0))
+                      + org_prs_reviewed_count.get("Unknown", 0))
 
     return {
         "issues": dict(org_issue_count),
         "pull_requests": dict(org_pr_count),
         "pull_requests_by_type": {t: dict(c) for t, c in org_pr_count_by_type.items()},
-        "total_reviews": dict(org_total_review_count),
-        "unique_reviews": dict(org_unique_review_count),
+        "prs_reviewed": dict(org_prs_reviewed_count),
         "contributors": {org: len(people) for org, people in org_contributors.items()},
         "new_contributors": {org: len(people) for org, people in org_new_contributors.items()},
         "reviewers": {org: len(people) for org, people in org_reviewers.items()},
@@ -337,12 +325,9 @@ def _print_repo_summary(repo_name, snap, months):
     for pr_type, org_counts in sorted(snap["pull_requests_by_type"].items()):
         total = sum(org_counts.values())
         print(f"- {pr_type}: {total} PRs")
-    print(f"\nCode Reviews performed in {repo_name} in the last {months} months by Organization:")
-    for org, count in Counter(snap["total_reviews"]).most_common():
-        print(f"- {org}: {count} total reviews")
-    print(f"\nUnique Code Reviews by Organization in {repo_name} in the last {months} months:")
-    for org, count in Counter(snap["unique_reviews"]).most_common():
-        print(f"- {org}: {count} unique reviews")
+    print(f"\nPRs reviewed in {repo_name} in the last {months} months by Organization:")
+    for org, count in Counter(snap["prs_reviewed"]).most_common():
+        print(f"- {org}: {count} PRs reviewed")
 
 
 def _print_aggregate_summary(agg, months):
