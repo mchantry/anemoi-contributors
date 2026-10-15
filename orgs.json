@@ -1,0 +1,33 @@
+{
+  "_note": [
+    "Controls which organisations appear in their own right in the charts.",
+    "always_show: keeps its own colour and legend entry however small its contribution,",
+    "  so a partner with a single PR stays visible. Edit this when a new partner appears.",
+    "exclude: dropped from the charts entirely (still present in results.json).",
+    "Anything not listed here is folded into a single 'Other organisations' series and",
+    "  listed by name, with its numbers, in the Smaller contributors table.",
+    "Nothing here changes the collected data: this file is presentation only."
+  ],
+  "always_show": [
+    "ECMWF",
+    "AEMET",
+    "DMI",
+    "DWD",
+    "FMI",
+    "GeoSphere",
+    "KNMI",
+    "LEGMC",
+    "Met Eirann",
+    "MeteoFrance",
+    "MeteoSwiss",
+    "METNorway",
+    "RMI",
+    "UKMO",
+    "Turing",
+    "Unknown"
+  ],
+  "exclude": [
+    "Bots",
+    "CodeAgents"
+  ]
+}

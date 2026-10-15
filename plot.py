@@ -1,7 +1,7 @@
 import json
 import glob
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -9,8 +9,15 @@ from plotly.subplots import make_subplots
 # --- Shared configuration -----------------------------------------------------
 metric_keys = ["issues", "pull_requests", "prs_reviewed"]
 metric_labels = ["Issues", "PRs", "PRs Reviewed"]
+
+with open("orgs.json") as _f:
+    _org_display = json.load(_f)
 # Orgs excluded from charts entirely (still present in results.json for anyone who wants them).
-EXCLUDED_ORGS = {"Bots", "CodeAgents"}
+EXCLUDED_ORGS = set(_org_display.get("exclude", []))
+# Orgs that keep their own colour and legend entry however small their contribution.
+ALWAYS_SHOW = set(_org_display.get("always_show", []))
+OTHER_LABEL = "Other organisations"
+OTHER_COLOR = "#9aa5b1"
 KNOWN_TYPE_ORDER = ["feat", "fix", "refactor", "perf", "test", "docs", "ci", "build", "chore", "style"]
 # Orgs need at least this many merged PRs before their median turnaround is plotted.
 MIN_PRS_FOR_LATENCY = 3
@@ -51,20 +58,47 @@ PCT_BUTTONS = [
 ]
 
 
+def fold_org(org):
+    """Display name for an org: itself if it earns a legend entry, else the shared bucket."""
+    return org if org in ALWAYS_SHOW else OTHER_LABEL
+
+
+def fold_counts(counts):
+    """Collapse an {org: number} mapping onto display names, dropping excluded orgs."""
+    folded = Counter()
+    for org, value in counts.items():
+        if org in EXCLUDED_ORGS:
+            continue
+        folded[fold_org(org)] += value
+    return folded
+
+
 def collect_orgs(snap):
-    """Return sorted list of all orgs appearing anywhere in a snapshot, minus excluded orgs."""
+    """Return sorted display names appearing anywhere in a snapshot, minus excluded orgs."""
     orgs = set()
     for repo_data in snap["repos"].values():
         for key in metric_keys:
             orgs.update(repo_data.get(key, {}).keys())
         for org_counts in repo_data.get("pull_requests_by_type", {}).values():
             orgs.update(org_counts.keys())
-    return sorted(orgs - EXCLUDED_ORGS)
+    return sorted({fold_org(o) for o in orgs - EXCLUDED_ORGS})
+
+
+def tail_orgs(agg):
+    """The real organisation names hidden behind the shared bucket, with their totals."""
+    totals = Counter()
+    for key in metric_keys:
+        for org, value in agg.get(key, {}).items():
+            if org not in EXCLUDED_ORGS and org not in ALWAYS_SHOW:
+                totals[org] += value
+    return totals
 
 
 def build_color_map(orgs):
     """Stable org -> colour assignment, shared by every figure on every page."""
-    return {org: PALETTE[i % len(PALETTE)] for i, org in enumerate(sorted(orgs))}
+    colors = {org: PALETTE[i % len(PALETTE)] for i, org in enumerate(sorted(orgs))}
+    colors[OTHER_LABEL] = OTHER_COLOR
+    return colors
 
 
 def aggregate_section(snap):
@@ -96,11 +130,12 @@ def build_main_figure(snap, all_orgs, color_map, include_plotlyjs):
     repos = list(snap["repos"].keys())
     months = snap.get("months", 3)
 
+    per_repo = {r: {key: fold_counts(snap["repos"][r].get(key, {})) for key in metric_keys}
+                for r in repos}
     aggregated = {key: Counter() for key in metric_keys}
-    for repo_data in snap["repos"].values():
+    for repo_counts in per_repo.values():
         for key in metric_keys:
-            for org, count in repo_data.get(key, {}).items():
-                aggregated[key][org] += count
+            aggregated[key].update(repo_counts[key])
 
     all_panels = ["All Repos"] + repos
     cols = 3
@@ -114,7 +149,7 @@ def build_main_figure(snap, all_orgs, color_map, include_plotlyjs):
             if panel == "All Repos":
                 counts = [aggregated[key].get(org, 0) for key in metric_keys]
             else:
-                counts = [snap["repos"][panel].get(key, {}).get(org, 0) for key in metric_keys]
+                counts = [per_repo[panel][key].get(org, 0) for key in metric_keys]
             fig.add_trace(
                 go.Bar(
                     name=org,
@@ -146,13 +181,14 @@ def build_pr_types_figure(snap, all_orgs, color_map, rows, cols, all_panels):
 
     pr_types_all = set()
     agg_by_type = {}
-    per_repo_by_type = {r: snap["repos"][r].get("pull_requests_by_type", {}) for r in repos}
+    per_repo_by_type = {
+        r: {t: fold_counts(c) for t, c in snap["repos"][r].get("pull_requests_by_type", {}).items()}
+        for r in repos
+    }
     for repo_by_type in per_repo_by_type.values():
         for pr_type, org_counts in repo_by_type.items():
             pr_types_all.add(pr_type)
-            bucket = agg_by_type.setdefault(pr_type, Counter())
-            for org, c in org_counts.items():
-                bucket[org] += c
+            agg_by_type.setdefault(pr_type, Counter()).update(org_counts)
 
     pr_type_labels = [t for t in KNOWN_TYPE_ORDER if t in pr_types_all]
     pr_type_labels += sorted(t for t in pr_types_all if t not in KNOWN_TYPE_ORDER and t != "other")
@@ -197,11 +233,11 @@ def build_pr_types_figure(snap, all_orgs, color_map, rows, cols, all_panels):
 
 def build_people_figure(agg, months):
     """How many distinct people each org puts on the project, and how many are new."""
-    contributors = agg.get("contributors")
+    contributors = fold_counts(agg.get("contributors", {}))
     if not contributors:
         return ""
-    new_contributors = agg.get("new_contributors", {})
-    reviewers = agg.get("reviewers", {})
+    new_contributors = fold_counts(agg.get("new_contributors", {}))
+    reviewers = fold_counts(agg.get("reviewers", {}))
 
     orgs = ranked_orgs(contributors)
     if not orgs:
@@ -243,9 +279,17 @@ def build_people_figure(agg, months):
 
 def build_review_matrix_figure(agg, months):
     """Who reviews whose code, normalised by row (effort given) or column (review received)."""
-    matrix = agg.get("review_matrix")
-    if not matrix:
+    raw_matrix = agg.get("review_matrix")
+    if not raw_matrix:
         return ""
+
+    # Fold both axes. A PR reviewed by two different folded orgs counts twice in
+    # the bucket's row; with one-PR organisations that is vanishingly rare.
+    matrix = defaultdict(Counter)
+    for reviewer, targets in raw_matrix.items():
+        if reviewer in EXCLUDED_ORGS:
+            continue
+        matrix[fold_org(reviewer)].update(fold_counts(targets))
 
     reviewer_totals = {rev: sum(t.values()) for rev, t in matrix.items()}
     reviewers = ranked_orgs(reviewer_totals)
@@ -319,9 +363,13 @@ def build_review_matrix_figure(agg, months):
 
 def build_review_outcomes_figure(agg, months):
     """Approvals vs change requests vs plain comments, per reviewing org."""
-    states = agg.get("review_states")
-    if not states:
+    raw_states = agg.get("review_states")
+    if not raw_states:
         return ""
+    states = defaultdict(Counter)
+    for org, counts in raw_states.items():
+        if org not in EXCLUDED_ORGS:
+            states[fold_org(org)].update(counts)
     totals = {org: sum(counts.values()) for org, counts in states.items()}
     orgs = ranked_orgs(totals)
     if not orgs:
@@ -397,10 +445,24 @@ def build_latency_figure(agg, months):
 
 def build_size_figure(agg, months):
     """Volume of code changed, next to typical PR size so totals aren't the whole story."""
-    sizes = agg.get("pr_size")
-    if not sizes:
+    raw_sizes = agg.get("pr_size")
+    if not raw_sizes:
         return ""
-    totals = {org: data.get("additions", 0) + data.get("deletions", 0) for org, data in sizes.items()}
+    # Sums fold cleanly; the median is recomputed as the median of the folded
+    # organisations' medians, which is close enough for a typical-size read.
+    sizes = defaultdict(Counter)
+    medians = defaultdict(list)
+    for org, data in raw_sizes.items():
+        if org in EXCLUDED_ORGS:
+            continue
+        display = fold_org(org)
+        for field in ("additions", "deletions", "changed_files"):
+            sizes[display][field] += data.get(field, 0)
+        medians[display].append(data.get("median_additions", 0))
+    for display, values in medians.items():
+        sizes[display]["median_additions"] = sorted(values)[len(values) // 2]
+
+    totals = {org: data["additions"] + data["deletions"] for org, data in sizes.items()}
     orgs = ranked_orgs(totals)
     if not orgs:
         return ""
@@ -431,6 +493,27 @@ def build_size_figure(agg, months):
         height=450,
     )
     return fig.to_html(full_html=False, include_plotlyjs=False)
+
+
+def build_smaller_contributors_table(agg):
+    """Name every organisation folded into the shared bucket, so nothing is lost."""
+    totals = tail_orgs(agg)
+    if not totals:
+        return ""
+    rows = ""
+    for org, _ in sorted(totals.items(), key=lambda kv: (-kv[1], kv[0])):
+        people = agg.get("contributors", {}).get(org, 0)
+        rows += (f"<tr><td>{org}</td>"
+                 f"<td>{agg.get('pull_requests', {}).get(org, 0)}</td>"
+                 f"<td>{agg.get('issues', {}).get(org, 0)}</td>"
+                 f"<td>{agg.get('prs_reviewed', {}).get(org, 0)}</td>"
+                 f"<td>{people}</td></tr>\n    ")
+    return f"""
+  <table class="tail">
+    <thead><tr><th>Organisation</th><th>PRs</th><th>Issues</th><th>PRs reviewed</th><th>People</th></tr></thead>
+    <tbody>
+    {rows}</tbody>
+  </table>"""
 
 
 def headline_stats(agg):
@@ -478,6 +561,9 @@ PAGE_STYLE = """
     ul { line-height: 1.8; }
     p.lead { color: #555; margin-top: -0.5em; }
     details summary { cursor: pointer; color: #1d3557; }
+    table.tail { border-collapse: collapse; margin-top: 8px; font-size: 0.92em; }
+    table.tail th, table.tail td { padding: 5px 14px 5px 0; text-align: left; border-bottom: 1px solid #e3e6ea; }
+    table.tail td:not(:first-child), table.tail th:not(:first-child) { text-align: right; }
     .stats { display: flex; flex-wrap: wrap; gap: 16px; margin: 24px 0 8px; }
     .stat { flex: 1 1 150px; background: #f5f7fa; border-radius: 8px; padding: 14px 16px; }
     .stat strong { display: block; font-size: 1.7em; line-height: 1.2; color: #1d3557; }
@@ -512,6 +598,11 @@ def build_extra_sections(agg, months):
          "Totals are dominated by large generated or vendored changes, so the median PR size "
          "sits alongside them.",
          build_size_figure(agg, months)),
+        ("Smaller contributors",
+         "Organisations grouped into <em>Other organisations</em> in the charts above, so that a long "
+         "tail of one-off contributors does not crowd out the partners. Their numbers are listed in "
+         "full here and kept separately in <code>results.json</code>.",
+         build_smaller_contributors_table(agg)),
     ]
     html = ""
     for title, blurb, div in sections:
@@ -574,8 +665,7 @@ def build_trend_figures(snapshots, color_map):
         for key in metric_keys:
             totals = Counter()
             for repo_data in snap.get("repos", {}).values():
-                for org, count in repo_data.get(key, {}).items():
-                    totals[org] += count
+                totals.update(fold_counts(repo_data.get(key, {})))
             for org in trend_orgs:
                 trend[key][org].append(totals.get(org, 0))
 
@@ -607,7 +697,9 @@ def build_trend_figures(snapshots, color_map):
         return volume_div, ""
 
     health_dates = [d for d, _ in health]
-    health_orgs = sorted({o for _, a in health for o in a.get("contributors", {})} - EXCLUDED_ORGS)
+    # Named orgs only: a pooled line for the shared bucket would mix unrelated
+    # organisations, and neither a cross-org share nor a median can be pooled.
+    health_orgs = sorted({o for _, a in health for o in a.get("contributors", {})} & ALWAYS_SHOW)
     panels = ["Distinct contributors", "First-time contributors",
               "Share of reviewing done outside own org", "Median days to merge"]
     fig2 = make_subplots(rows=2, cols=2, subplot_titles=panels)
@@ -731,6 +823,12 @@ html = f"""<!DOCTYPE html>
   across the following repositories: {", ".join(repos)}.</p>
   <p>Bot accounts and automated code agents are excluded from all charts on this page (they remain in <code>results.json</code>).</p>
   <ul>
+    <li><strong>Which organisations get their own series:</strong> <code>orgs.json</code> lists the organisations that
+    keep their own colour and legend entry, however small their contribution — a partner with a single PR stays
+    visible, because volume is a poor proxy for how much a contribution matters here. Every other organisation is
+    folded into <em>Other organisations</em> for charting only, and named with its numbers under Smaller contributors.
+    The underlying data is never folded. The turnaround chart is the one exception: medians cannot be pooled, so it
+    shows organisations individually and relies on its own minimum-PR filter instead.</li>
     <li><strong>Issues:</strong> count of issues opened, grouped by the organisation of the issue author.</li>
     <li><strong>Pull Requests:</strong> count of merged PRs where an organisation had at least one contributor.
     Contributors are identified as: the PR opener, any commit author, and any <code>Co-authored-by:</code> trailer
