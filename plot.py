@@ -2,6 +2,8 @@ import json
 import glob
 import os
 from collections import Counter, defaultdict
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -16,6 +18,9 @@ with open("orgs.json") as _f:
 EXCLUDED_ORGS = set(_org_display.get("exclude", []))
 # Orgs that keep their own colour and legend entry however small their contribution.
 ALWAYS_SHOW = set(_org_display.get("always_show", []))
+HOST_ORG = _org_display.get("host", "ECMWF")
+# Mapping buckets rather than organisations, so they never count towards how many took part.
+UNPLACED_ORGS = {"Unknown", "Other"}
 OTHER_LABEL = "Other organisations"
 OTHER_COLOR = "#9aa5b1"
 KNOWN_TYPE_ORDER = ["feat", "fix", "refactor", "perf", "test", "docs", "ci", "build", "chore", "style"]
@@ -41,6 +46,29 @@ REVIEW_STATE_LABELS = {
     "COMMENTED": "Commented",
     "DISMISSED": "Superseded",
 }
+
+# Headline cards in display order. `better` sets the colour of a change:
+# "up" or "down" is the good direction, None keeps it neutral.
+HEADLINE_METRICS = [
+    dict(key="people", label="people contributed code", kind="count", better="up"),
+    dict(key="orgs", label="organisations contributed code", kind="count", better="up"),
+    dict(key="new_people", label="made their first contribution", kind="count", better="up"),
+    dict(key="merged_prs", label="PRs merged", kind="count", better="up"),
+    dict(key="prs_reviewed", label="PRs reviewed", kind="count", better="up"),
+    dict(key="issues", label="issues opened", kind="count", better="up"),
+    dict(key="partner_share", label="of merged PRs had a contributor from outside {host}", kind="pct", better="up"),
+    dict(key="cross_org_reviews", label="of reviews crossed organisations", kind="pct", better="up"),
+    dict(key="days_to_first_review", label="median days to first review", kind="days", better="down"),
+    dict(key="days_to_merge", label="median days to merge", kind="days", better="down"),
+    dict(key="attributed", label="of activity attributed to a known organisation", kind="pct", better=None),
+]
+# (months back, button label); the first is the default.
+COMPARISONS = [(12, "1 year earlier"), (6, "the previous 6 months")]
+# How far an archived snapshot may sit from the exact comparison date.
+BASELINE_TOLERANCE_DAYS = 10
+# Changes smaller than these are shown grey rather than green or red.
+NEUTRAL_PCT = 5
+NEUTRAL_PTS = 1
 
 PCT_BUTTONS = [
     dict(
@@ -516,19 +544,33 @@ def build_smaller_contributors_table(agg):
   </table>"""
 
 
-def headline_stats(agg):
-    """Small summary block: breadth, cross-org review share, attribution coverage."""
-    contributors = {o: n for o, n in agg.get("contributors", {}).items() if o not in EXCLUDED_ORGS}
-    stats = []
-    if contributors:
-        stats.append((sum(contributors.values()), "people contributed code"))
-        stats.append((len(contributors), "organisations contributed code"))
-        new_total = sum(n for o, n in agg.get("new_contributors", {}).items() if o not in EXCLUDED_ORGS)
-        stats.append((new_total, "made their first contribution"))
+def headline_values(snap):
+    """Raw headline numbers for one snapshot; a metric is None when the snapshot predates it."""
+    agg = aggregate_section(snap)
+    project = snap.get("project", {})
+    values = dict.fromkeys(m["key"] for m in HEADLINE_METRICS)
 
-    matrix = agg.get("review_matrix", {})
+    contributors = {o: n for o, n in agg.get("contributors", {}).items() if o not in EXCLUDED_ORGS}
+    if contributors:
+        values["people"] = sum(contributors.values())
+        values["orgs"] = len(set(contributors) - UNPLACED_ORGS)
+        values["new_people"] = sum(n for o, n in agg.get("new_contributors", {}).items()
+                                   if o not in EXCLUDED_ORGS)
+    if "issues" in agg:
+        values["issues"] = sum(n for o, n in agg["issues"].items() if o not in EXCLUDED_ORGS)
+
+    if "merged_prs" in project:
+        values["merged_prs"] = project["merged_prs"]
+        values["prs_reviewed"] = project["prs_reviewed"]
+        if project["merged_prs"]:
+            values["partner_share"] = 100 * project["partner_prs"] / project["merged_prs"]
+    if project.get("median_hours_to_first_review") is not None:
+        values["days_to_first_review"] = project["median_hours_to_first_review"] / 24
+    if project.get("median_hours_to_merge") is not None:
+        values["days_to_merge"] = project["median_hours_to_merge"] / 24
+
     cross = same = 0
-    for reviewer, targets in matrix.items():
+    for reviewer, targets in agg.get("review_matrix", {}).items():
         if reviewer in EXCLUDED_ORGS:
             continue
         for author, count in targets.items():
@@ -539,20 +581,110 @@ def headline_stats(agg):
             else:
                 cross += count
     if cross + same:
-        stats.append((f"{100 * cross / (cross + same):.0f}%", "of reviews crossed organisations"))
+        values["cross_org_reviews"] = 100 * cross / (cross + same)
 
     attribution = agg.get("attribution", {})
     if attribution.get("total_credits"):
-        known = 100 * (1 - attribution["unknown_credits"] / attribution["total_credits"])
-        stats.append((f"{known:.0f}%", "of activity attributed to a known organisation"))
+        values["attributed"] = 100 * (1 - attribution["unknown_credits"] / attribution["total_credits"])
+    return values
 
-    if not stats:
+
+def find_baseline(snapshots, date, months_back):
+    """The archived snapshot closest to `months_back` months before `date`, if one is near enough."""
+    target = datetime.strptime(date, "%Y-%m-%d") - relativedelta(months=months_back)
+    best = None
+    for snap_date, snap in snapshots:
+        gap = abs((datetime.strptime(snap_date, "%Y-%m-%d") - target).days)
+        if gap <= BASELINE_TOLERANCE_DAYS and (best is None or gap < best[0]):
+            best = (gap, snap_date, snap)
+    return (best[1], best[2]) if best else None
+
+
+def format_headline(value, kind):
+    if kind == "pct":
+        return f"{value:.0f}%"
+    if kind == "days":
+        return f"{value:.1f}"
+    return f"{value:,}"
+
+
+def format_delta(current, previous, metric):
+    """Arrow, size and colour class for the change from `previous` to `current`."""
+    if metric["kind"] == "pct":
+        change = current - previous
+        if round(change) == 0:
+            return "no change", "neutral"
+        text = f"{abs(change):.0f} pt{'' if round(abs(change)) == 1 else 's'}"
+        small = abs(change) < NEUTRAL_PTS
+    else:
+        if previous == 0:
+            return ("new", "neutral") if current else ("no change", "neutral")
+        change = 100 * (current - previous) / previous
+        if round(change) == 0:
+            return "no change", "neutral"
+        text = f"{abs(change):.0f}%"
+        small = abs(change) < NEUTRAL_PCT
+    arrow = "▲" if change > 0 else "▼"
+    if small or metric["better"] is None:
+        tone = "neutral"
+    else:
+        tone = "good" if (change > 0) == (metric["better"] == "up") else "bad"
+    return f"{arrow} {text}", tone
+
+
+def headline_stats(snap, date, snapshots):
+    """Headline cards, each with its change against the snapshots 6 and 12 months earlier."""
+    values = headline_values(snap)
+    baselines = {}
+    for months_back, _ in COMPARISONS:
+        found = find_baseline(snapshots, date, months_back)
+        if found:
+            baselines[months_back] = (found[0], found[1].get("months", 6), headline_values(found[1]))
+
+    cards = []
+    for metric in HEADLINE_METRICS:
+        value = values[metric["key"]]
+        if value is None:
+            continue
+        label = metric["label"].format(host=HOST_ORG)
+        deltas = ""
+        for months_back, _ in COMPARISONS:
+            base = baselines.get(months_back)
+            previous = base[2][metric["key"]] if base else None
+            if previous is None:
+                text, tone, tip = "no earlier data", "missing", "No snapshot from that far back"
+            else:
+                text, tone = format_delta(value, previous, metric)
+                tip = (f"{format_headline(previous, metric['kind'])} in the {base[1]} months "
+                       f"to {base[0]}")
+            deltas += f'<em class="delta {tone}" data-vs="{months_back}" title="{tip}">{text}</em>'
+        cards.append(
+            f'<div class="stat"><strong>{format_headline(value, metric["kind"])}</strong>'
+            f'<span>{label}</span>{deltas}</div>'
+        )
+    if not cards:
         return ""
-    cards = "\n    ".join(
-        f'<div class="stat"><strong>{value}</strong><span>{label}</span></div>'
-        for value, label in stats
+
+    default = COMPARISONS[0][0]
+    buttons = "".join(
+        f'<button type="button" data-vs="{m}"{" class=active" if m == default else ""}>{text}</button>'
+        for m, text in COMPARISONS
     )
-    return f'<div class="stats">\n    {cards}\n  </div>'
+    cards_html = "\n    ".join(cards)
+    return f"""<div class="stats-toggle">Change compared with {buttons}</div>
+  <div class="stats" data-vs="{default}">
+    {cards_html}
+  </div>
+  <script>
+    document.querySelectorAll(".stats-toggle button").forEach(function (button) {{
+      button.addEventListener("click", function () {{
+        document.querySelector(".stats").dataset.vs = button.dataset.vs;
+        document.querySelectorAll(".stats-toggle button").forEach(function (b) {{
+          b.classList.toggle("active", b === button);
+        }});
+      }});
+    }});
+  </script>"""
 
 
 PAGE_STYLE = """
@@ -564,10 +696,21 @@ PAGE_STYLE = """
     table.tail { border-collapse: collapse; margin-top: 8px; font-size: 0.92em; }
     table.tail th, table.tail td { padding: 5px 14px 5px 0; text-align: left; border-bottom: 1px solid #e3e6ea; }
     table.tail td:not(:first-child), table.tail th:not(:first-child) { text-align: right; }
-    .stats { display: flex; flex-wrap: wrap; gap: 16px; margin: 24px 0 8px; }
-    .stat { flex: 1 1 150px; background: #f5f7fa; border-radius: 8px; padding: 14px 16px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin: 12px 0 8px; }
+    .stat { background: #f5f7fa; border-radius: 8px; padding: 14px 16px; }
     .stat strong { display: block; font-size: 1.7em; line-height: 1.2; color: #1d3557; }
     .stat span { font-size: 0.85em; color: #555; }
+    .stat .delta { display: block; margin-top: 6px; font-size: 0.85em; font-style: normal; font-weight: 600; cursor: help; }
+    .delta.good { color: #2a9d4a; }
+    .delta.bad { color: #d1495b; }
+    .delta.neutral { color: #8d99ae; }
+    .delta.missing { color: #b0b7c0; font-weight: normal; }
+    .stats[data-vs="12"] .delta:not([data-vs="12"]),
+    .stats[data-vs="6"] .delta:not([data-vs="6"]) { display: none; }
+    .stats-toggle { margin-top: 24px; font-size: 0.9em; color: #555; }
+    .stats-toggle button { margin-left: 6px; padding: 4px 10px; border: 1px solid #c5ccd5; border-radius: 4px;
+      background: #fff; color: #1d3557; cursor: pointer; font-size: 0.95em; }
+    .stats-toggle button.active { background: #1d3557; border-color: #1d3557; color: #fff; }
 """
 
 
@@ -611,7 +754,7 @@ def build_extra_sections(agg, months):
     return html
 
 
-def render_snapshot_page(snap, color_map, generated, output_path):
+def render_snapshot_page(snap, color_map, generated, output_path, snapshots):
     """Render a standalone HTML page for a single historical snapshot.
 
     `generated` comes from the filename rather than the payload: snapshots
@@ -636,7 +779,7 @@ def render_snapshot_page(snap, color_map, generated, output_path):
   <p><a href="../index.html">&larr; Back to latest</a></p>
   <h1>Snapshot from {generated}</h1>
 
-  {headline_stats(agg)}
+  {headline_stats(snap, generated, snapshots)}
 
   {plot_div}
 
@@ -775,7 +918,7 @@ history_entries = [date for date, _ in snapshots]
 if snapshots:
     trend_div, health_div = build_trend_figures(snapshots, color_map)
     for date, snap in snapshots:
-        render_snapshot_page(snap, color_map, date, f"docs/history/{date}.html")
+        render_snapshot_page(snap, color_map, date, f"docs/history/{date}.html", snapshots)
 
 # --- History nav block for the main page (newest first) ----------------------
 if history_entries:
@@ -806,7 +949,7 @@ html = f"""<!DOCTYPE html>
   <p class="lead">How organisations build Anemoi together — activity in the last {months} month{'s' if months != 1 else ''},
   as of {data['generated_at'][:10]}.</p>
 
-  {headline_stats(latest_agg)}
+  {headline_stats(data, data['generated_at'][:10], snapshots)}
 
   {plot_div}
 
@@ -823,6 +966,17 @@ html = f"""<!DOCTYPE html>
   across the following repositories: {", ".join(repos)}.</p>
   <p>Bot accounts and automated code agents are excluded from all charts on this page (they remain in <code>results.json</code>).</p>
   <ul>
+    <li><strong>Headline figures:</strong> project-wide totals for the {months}-month window. PRs merged and PRs reviewed
+    count each PR once, however many organisations were involved, so they are lower than the per-organisation totals
+    in the charts. The organisation count leaves out the <em>Unknown</em> and <em>Other</em> mapping buckets. A PR has a
+    contributor from outside {HOST_ORG} if anyone credited on it maps to a named organisation other than {HOST_ORG}.
+    The median times cover PRs merged in the window, and ignore reviews from bots and code agents so automated
+    reviews do not make first review look faster. Each change compares against the archived snapshot nearest the
+    same date one year earlier (the default) or six months earlier — the latter is the immediately preceding,
+    non-overlapping window, while the former compares like-for-like seasons. Counts and times change by percent;
+    figures that are already percentages change by percentage points. Green and red mark better and worse, with
+    changes under {NEUTRAL_PCT}% (or {NEUTRAL_PTS} point) left grey; attribution coverage is a data-quality figure and
+    is never coloured. Hover over a change to see the earlier value.</li>
     <li><strong>Which organisations get their own series:</strong> <code>orgs.json</code> lists the organisations that
     keep their own colour and legend entry, however small their contribution — a partner with a single PR stays
     visible, because volume is a poor proxy for how much a contribution matters here. Every other organisation is

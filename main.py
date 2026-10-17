@@ -56,6 +56,13 @@ def save_email_to_org_mapping(mapping):
         json.dump(mapping, f, indent=2)
 
 
+def load_org_config():
+    """The `exclude` list and `host` organisation from orgs.json."""
+    with open("orgs.json", "r") as f:
+        config = json.load(f)
+    return set(config.get("exclude", [])), config.get("host", "ECMWF")
+
+
 def _resolve_login(login, github_to_org):
     """Return the org for a login, marking unknown logins for later manual review."""
     if not login:
@@ -311,6 +318,67 @@ def snapshot_repo(cache, github_to_org, email_to_org, months, as_of, first_seen=
     }
 
 
+def project_totals(cache, github_to_org, email_to_org, months, as_of, exclude, host):
+    """Project-wide headline figures that cannot be derived from per-org counts.
+
+    Per-org counts credit a co-authored PR to every org on it, and medians do
+    not pool, so these are computed directly over distinct PRs. Activity by
+    excluded orgs (bots, code agents) is ignored here, so automated reviews do
+    not shorten the time to first review.
+    """
+    since = as_of - relativedelta(months=months)
+    merged_prs = partner_prs = 0
+    reviewed_prs = set()
+    merge_hours = []
+    first_review_hours = []
+
+    for pr_key, pr in cache["prs"].items():
+        opener = pr.get("user")
+        human_reviews = []
+        for review in pr.get("reviews", []):
+            user = review.get("user")
+            if not user or not review.get("submitted_at") or user == opener:
+                continue
+            if _resolve_login(user, github_to_org) in exclude:
+                continue
+            submitted_at = datetime.fromisoformat(review["submitted_at"])
+            human_reviews.append(submitted_at)
+            if since <= submitted_at <= as_of:
+                reviewed_prs.add(pr_key)
+
+        if not pr.get("merged") or not pr.get("created_at") or not pr.get("merged_at"):
+            continue
+        created_at = datetime.fromisoformat(pr["created_at"])
+        merged_at = datetime.fromisoformat(pr["merged_at"])
+
+        # Same window as the per-org PR counts: opened in-window, merged by as_of.
+        if since <= created_at <= as_of and merged_at <= as_of:
+            orgs = {_resolve_identity(i, github_to_org, email_to_org) for i in _pr_identities(pr)}
+            orgs = {o for o in orgs if o and o not in exclude}
+            if orgs:
+                merged_prs += 1
+                if orgs - {host, "Unknown"}:
+                    partner_prs += 1
+
+        # Same window as the per-org latency: merged in-window.
+        if since <= merged_at <= as_of and opener and _resolve_login(opener, github_to_org) not in exclude:
+            merge_hours.append(_hours_between(created_at, merged_at))
+            if human_reviews:
+                first_review_hours.append(_hours_between(created_at, min(human_reviews)))
+
+    totals = {
+        "host": host,
+        "merged_prs": merged_prs,
+        "partner_prs": partner_prs,
+        "prs_reviewed": len(reviewed_prs),
+    }
+    if merge_hours:
+        totals["median_hours_to_merge"] = round(median(merge_hours), 1)
+    if first_review_hours:
+        totals["median_hours_to_first_review"] = round(median(first_review_hours), 1)
+    return totals
+
+
 def _print_repo_summary(repo_name, snap, months):
     print(f"------------------------------")
     print(f" {repo_name}:")
@@ -416,9 +484,13 @@ if __name__ == "__main__":
 
     # Distinct-people metrics cannot be summed across repos, so the cross-repo
     # view is pivoted from the combined cache instead.
-    results["aggregate"] = snapshot_repo(merge_caches(caches), github_to_org, email_to_org,
+    merged = merge_caches(caches)
+    results["aggregate"] = snapshot_repo(merged, github_to_org, email_to_org,
                                          args.months, as_of, first_seen)
     _print_aggregate_summary(results["aggregate"], args.months)
+    exclude, host = load_org_config()
+    results["project"] = project_totals(merged, github_to_org, email_to_org,
+                                        args.months, as_of, exclude, host)
 
     if is_today:
         with open("results.json", "w") as f:

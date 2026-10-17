@@ -27,7 +27,9 @@ from main import (
     build_first_contribution,
     load_email_to_org_mapping,
     load_github_to_org_mapping,
+    load_org_config,
     merge_caches,
+    project_totals,
     save_email_to_org_mapping,
     save_github_to_org_mapping,
     snapshot_repo,
@@ -121,6 +123,7 @@ def main():
 
     github_to_org = load_github_to_org_mapping()
     email_to_org = load_email_to_org_mapping()
+    exclude, host = load_org_config()
 
     caches = {r: load_cache(r) for r in REPO_LIST}
     empty = [r for r, c in caches.items() if not c["prs"] and not c["issues"]]
@@ -149,6 +152,7 @@ def main():
                 for r in REPO_LIST
             },
             "aggregate": snapshot_repo(merged, github_to_org, email_to_org, window, d, first_seen),
+            "project": project_totals(merged, github_to_org, email_to_org, window, d, exclude, host),
         }
         with open(path, "w") as f:
             json.dump(results, f, indent=2)

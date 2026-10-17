@@ -6,8 +6,12 @@
     "exclude: dropped from the charts entirely (still present in results.json).",
     "Anything not listed here is folded into a single 'Other organisations' series and",
     "  listed by name, with its numbers, in the Smaller contributors table.",
-    "Nothing here changes the collected data: this file is presentation only."
+    "Nothing here changes the per-organisation data. The one exception is the project-wide",
+    "  'project' block behind the headline figures: it ignores excluded organisations, and",
+    "  'host' is the organisation the share of PRs from outside contributors is measured against.",
+    "  After editing either, run `python backfill.py --regenerate-existing`."
   ],
+  "host": "ECMWF",
   "always_show": [
     "ECMWF",
     "AEMET",
