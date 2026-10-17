@@ -885,47 +885,56 @@ def build_trend_figures(snapshots, color_map):
     return volume_div, fig2.to_html(full_html=False, include_plotlyjs=False)
 
 
-# --- Load the latest snapshot ------------------------------------------------
-with open("results.json") as f:
-    data = json.load(f)
+def load_snapshots():
+    """Every archived snapshot as (date, data), oldest first, dated by filename."""
+    snapshots = []
+    for path in sorted(glob.glob("history/results-*.json")):
+        with open(path) as f:
+            snap = json.load(f)
+        snapshots.append((os.path.basename(path).replace("results-", "").replace(".json", ""), snap))
+    return snapshots
 
-months = data.get("months", 3)
-repos = list(data["repos"].keys())
-all_orgs = collect_orgs(data)
 
-snapshot_files = sorted(glob.glob("history/results-*.json"))
-snapshots = []
-for path in snapshot_files:
-    with open(path) as f:
-        snap = json.load(f)
-    snapshots.append((os.path.basename(path).replace("results-", "").replace(".json", ""), snap))
+def site_color_map(snapshots=None, latest=None):
+    """One colour map for the whole site, built from every org seen in any snapshot."""
+    site_orgs = set(collect_orgs(latest)) if latest else set()
+    for _, snap in snapshots if snapshots is not None else load_snapshots():
+        site_orgs.update(collect_orgs(snap))
+    return build_color_map(site_orgs)
 
-# One colour map for the whole site, built from every org seen in any snapshot.
-site_orgs = set(all_orgs)
-for _, snap in snapshots:
-    site_orgs.update(collect_orgs(snap))
-color_map = build_color_map(site_orgs)
 
-# --- Figures for the latest snapshot -----------------------------------------
-plot_div, rows, cols, all_panels = build_main_figure(data, all_orgs, color_map, include_plotlyjs="cdn")
-plot_div_types = build_pr_types_figure(data, all_orgs, color_map, rows, cols, all_panels)
-latest_agg = aggregate_section(data)
-extra_sections = build_extra_sections(latest_agg, months)
+def main():
+    # --- Load the latest snapshot ------------------------------------------------
+    with open("results.json") as f:
+        data = json.load(f)
 
-# --- Trends + per-snapshot pages ---------------------------------------------
-trend_div = health_div = ""
-history_entries = [date for date, _ in snapshots]
-if snapshots:
-    trend_div, health_div = build_trend_figures(snapshots, color_map)
-    for date, snap in snapshots:
-        render_snapshot_page(snap, color_map, date, f"docs/history/{date}.html", snapshots)
+    months = data.get("months", 3)
+    repos = list(data["repos"].keys())
+    all_orgs = collect_orgs(data)
 
-# --- History nav block for the main page (newest first) ----------------------
-if history_entries:
-    items = "\n    ".join(
-        f'<li><a href="history/{d}.html">{d}</a></li>' for d in reversed(history_entries)
-    )
-    history_nav = f"""
+    snapshots = load_snapshots()
+    color_map = site_color_map(snapshots, data)
+
+    # --- Figures for the latest snapshot -----------------------------------------
+    plot_div, rows, cols, all_panels = build_main_figure(data, all_orgs, color_map, include_plotlyjs="cdn")
+    plot_div_types = build_pr_types_figure(data, all_orgs, color_map, rows, cols, all_panels)
+    latest_agg = aggregate_section(data)
+    extra_sections = build_extra_sections(latest_agg, months)
+
+    # --- Trends + per-snapshot pages ---------------------------------------------
+    trend_div = health_div = ""
+    history_entries = [date for date, _ in snapshots]
+    if snapshots:
+        trend_div, health_div = build_trend_figures(snapshots, color_map)
+        for date, snap in snapshots:
+            render_snapshot_page(snap, color_map, date, f"docs/history/{date}.html", snapshots)
+
+    # --- History nav block for the main page (newest first) ----------------------
+    if history_entries:
+        items = "\n    ".join(
+            f'<li><a href="history/{d}.html">{d}</a></li>' for d in reversed(history_entries)
+        )
+        history_nav = f"""
   <h2>Browse History</h2>
   <details>
     <summary>{len(history_entries)} archived snapshots — each opens on its own page</summary>
@@ -934,10 +943,10 @@ if history_entries:
     </ul>
   </details>
 """
-else:
-    history_nav = ""
+    else:
+        history_nav = ""
 
-html = f"""<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1039,5 +1048,9 @@ html = f"""<!DOCTYPE html>
 </body>
 </html>"""
 
-with open("docs/index.html", "w") as f:
-    f.write(html)
+    with open("docs/index.html", "w") as f:
+        f.write(html)
+
+
+if __name__ == "__main__":
+    main()
