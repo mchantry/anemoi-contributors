@@ -32,8 +32,10 @@ VETERAN_YEARS = 2
 
 # (emoji, name, description, key into the per-person badge data, minimum)
 BADGES = [
-    ("🌍", "Grand tour", f"Merged or reviewed PRs in all {len(REPO_LIST)} repositories", "repos", len(REPO_LIST)),
-    ("🗺️", "Explorer", f"Active in {len(REPO_LIST) - 1} of the {len(REPO_LIST)} repositories", "repos_almost", 1),
+    ("🌍", "Grand tour", f"Merged or reviewed PRs in all {len(REPO_LIST)} repositories since the project began",
+     "lifetime_repos", len(REPO_LIST)),
+    ("🗺️", "Explorer", f"Merged or reviewed PRs in {len(REPO_LIST) - 1} of the {len(REPO_LIST)} repositories "
+     "since the project began", "lifetime_repos_almost", 1),
     ("🌉", "Bridge builder", "Reviewed PRs from 3 or more other organisations", "orgs_reviewed", 3),
     ("👋", "Welcoming committee", "Reviewed the first PR of 3 or more newcomers", "newcomers_reviewed", 3),
     ("⚡", "Speed demon", "3 or more merged <code>perf</code> PRs", "perf", 3),
@@ -54,6 +56,7 @@ def collect(caches, github_to_org, exclude, since, as_of):
         "merged": 0, "reviewed": set(), "cross_org_reviewed": set(), "first_responder": 0,
         "issues": 0, "repos": set(), "orgs_reviewed": set(), "newcomers_reviewed": set(),
         "types": Counter(), "additions": 0, "deletions": 0, "lifetime_prs": 0, "perf": 0,
+        "lifetime_repos": set(),
     })
     newcomers = {}
     perf_prs = []
@@ -72,6 +75,7 @@ def collect(caches, github_to_org, exclude, since, as_of):
             for identity in credited:
                 if merged_at <= as_of:
                     person[identity]["lifetime_prs"] += 1
+                    person[identity]["lifetime_repos"].add(repo)
 
             # The opener's first merged PR anywhere in Anemoi, merged in the window.
             opener_first = merged_at and first_seen.get(opener) == merged_at and since <= merged_at <= as_of
@@ -86,7 +90,10 @@ def collect(caches, github_to_org, exclude, since, as_of):
             if reviews and created_at and since <= created_at <= as_of:
                 person[reviews[0]["user"]]["first_responder"] += 1
             for review in reviews:
-                if not (since <= datetime.fromisoformat(review["submitted_at"]) <= as_of):
+                submitted_at = datetime.fromisoformat(review["submitted_at"])
+                if submitted_at <= as_of:
+                    person[review["user"]]["lifetime_repos"].add(repo)
+                if not (since <= submitted_at <= as_of):
                     continue
                 p = person[review["user"]]
                 p["reviewed"].add((repo, number))
@@ -127,10 +134,10 @@ def collect(caches, github_to_org, exclude, since, as_of):
 
 
 def badge_value(login, p, key, first_seen, as_of):
-    if key == "repos":
-        return len(p["repos"])
-    if key == "repos_almost":
-        return int(len(p["repos"]) == len(REPO_LIST) - 1)
+    if key == "lifetime_repos":
+        return len(p["lifetime_repos"])
+    if key == "lifetime_repos_almost":
+        return int(len(p["lifetime_repos"]) == len(REPO_LIST) - 1)
     if key in ("orgs_reviewed", "newcomers_reviewed"):
         return len(p[key])
     if key in ("fix", "docs", "test"):
@@ -354,8 +361,8 @@ def main():
   {perf_section(perf_prs, github_to_org)}
 
   <h2>Achievements</h2>
-  <p class="lead">Earned in {period}, except <em>Centurion</em> and <em>Veteran</em>, which count the whole history
-  for anyone still active.</p>
+  <p class="lead">Earned in {period}, except <em>Grand tour</em>, <em>Explorer</em>, <em>Centurion</em> and
+  <em>Veteran</em>, which count the whole history for anyone active in {period}.</p>
   {badges_section(people, github_to_org, first_seen, as_of)}
 
   <h2>New faces</h2>
