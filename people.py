@@ -49,6 +49,10 @@ BADGES = [
 ]
 
 
+# Badges counted over the whole history, shown apart from those earned in the window.
+LIFETIME_BADGE_KEYS = {"lifetime_repos", "lifetime_repos_almost", "lifetime_prs", "veteran"}
+
+
 def collect(caches, github_to_org, exclude, since, as_of):
     """Per-person activity in the window, plus the lifetime facts some badges need."""
     first_seen = build_first_contribution(caches)
@@ -216,9 +220,12 @@ def ratio_section(people, github_to_org, color_map):
   </table>"""
 
 
-def badges_section(people, github_to_org, first_seen, as_of):
+def badges_section(people, github_to_org, first_seen, as_of, lifetime):
+    """The badges earned in the window, or with `lifetime` those counted over the whole history."""
     cards = ""
     for emoji, name, description, key, minimum in BADGES:
+        if (key in LIFETIME_BADGE_KEYS) != lifetime:
+            continue
         holders = sorted(
             ((badge_value(login, p, key, first_seen, as_of), login) for login, p in people.items()),
             key=lambda t: (-t[0], t[1]),
@@ -361,9 +368,12 @@ def main():
   {perf_section(perf_prs, github_to_org)}
 
   <h2>Achievements</h2>
-  <p class="lead">Earned in {period}, except <em>Grand tour</em>, <em>Explorer</em>, <em>Centurion</em> and
-  <em>Veteran</em>, which count the whole history for anyone active in {period}.</p>
-  {badges_section(people, github_to_org, first_seen, as_of)}
+  <p class="lead">Earned in {period}.</p>
+  {badges_section(people, github_to_org, first_seen, as_of, lifetime=False)}
+
+  <h2>Hall of fame</h2>
+  <p class="lead">Counted over the whole history of Anemoi, for everyone active in {period}.</p>
+  {badges_section(people, github_to_org, first_seen, as_of, lifetime=True)}
 
   <h2>New faces</h2>
   <p class="lead">Everyone whose first merged PR anywhere in Anemoi landed in {period}. Welcome!</p>
