@@ -28,6 +28,8 @@ OUTPUT_PATH = "docs/people.html"
 LEADERBOARD_SIZE = 10
 # Merged PRs plus PRs reviewed needed before someone's review ratio is shown.
 MIN_RATIO_ACTIVITY = 20
+# Thresholds offered as buttons; MIN_RATIO_ACTIVITY is the one shown first.
+RATIO_THRESHOLDS = [20, 10, 5]
 VETERAN_YEARS = 2
 
 # (emoji, name, description, key into the per-person badge data, minimum)
@@ -179,24 +181,48 @@ def leaderboard(title, blurb, people, github_to_org, value):
 
 
 def ratio_section(people, github_to_org, color_map):
-    eligible = {login: p for login, p in people.items()
-                if p["merged"] + len(p["reviewed"]) >= MIN_RATIO_ACTIVITY}
+    """Chart and table of reviewing against writing, with buttons for the activity threshold."""
+    def activity(p):
+        return p["merged"] + len(p["reviewed"])
+
+    lowest = min(RATIO_THRESHOLDS)
+    eligible = {login: p for login, p in people.items() if activity(p) >= lowest}
     if not eligible:
         return ""
-
-    fig = go.Figure()
     by_org = defaultdict(list)
-    for login, p in eligible.items():
+    for login, p in sorted(eligible.items()):
         by_org[github_to_org.get(login, "Unknown")].append(login)
-    for org, logins in sorted(by_org.items()):
+    orgs = sorted(by_org)
+
+    # Points for each threshold, one trace per organisation. Only people at the
+    # default threshold carry a label, so lower thresholds do not bury the chart
+    # in overlapping names; everyone is named on hover.
+    views = {}
+    for threshold in RATIO_THRESHOLDS:
+        shown = {org: [l for l in by_org[org] if activity(eligible[l]) >= threshold] for org in orgs}
+        top = max(max(eligible[l]["merged"], len(eligible[l]["reviewed"]))
+                  for logins in shown.values() for l in logins) * 1.1
+        views[threshold] = {
+            "x": [[eligible[l]["merged"] for l in shown[org]] for org in orgs],
+            "y": [[len(eligible[l]["reviewed"]) for l in shown[org]] for org in orgs],
+            "text": [[l if activity(eligible[l]) >= MIN_RATIO_ACTIVITY else "" for l in shown[org]]
+                     for org in orgs],
+            "customdata": [shown[org] for org in orgs],
+            "visible": [bool(shown[org]) for org in orgs],
+            "top": top,
+        }
+
+    default = views[MIN_RATIO_ACTIVITY]
+    fig = go.Figure()
+    for i, org in enumerate(orgs):
         fig.add_trace(go.Scatter(
             name=org, mode="markers+text", textposition="top center",
-            x=[eligible[l]["merged"] for l in logins], y=[len(eligible[l]["reviewed"]) for l in logins],
-            text=logins, marker=dict(size=11, color=color_map.get(org)),
-            hovertemplate="%{text}: %{x} merged, %{y} reviewed<extra>" + org + "</extra>",
+            x=default["x"][i], y=default["y"][i], text=default["text"][i], customdata=default["customdata"][i],
+            visible=default["visible"][i], marker=dict(size=11, color=color_map.get(org)),
+            hovertemplate="%{customdata}: %{x} merged, %{y} reviewed<extra>" + org + "</extra>",
         ))
-    top = max(max(p["merged"], len(p["reviewed"])) for p in eligible.values()) * 1.1
-    fig.add_trace(go.Scatter(x=[0, top], y=[0, top], mode="lines", showlegend=False, hoverinfo="skip",
+    top = default["top"]
+    fig.add_trace(go.Scatter(x=[0, 1000], y=[0, 1000], mode="lines", showlegend=False, hoverinfo="skip",
                              line=dict(color="#c5ccd5", dash="dash")))
     fig.update_layout(height=520, xaxis_title="PRs merged", yaxis_title="PRs reviewed",
                       xaxis=dict(range=[0, top]), yaxis=dict(range=[0, top]), legend_title="Organisation",
@@ -209,10 +235,42 @@ def ratio_section(people, github_to_org, color_map):
         reviewed = len(p["reviewed"])
         ratio = f"{reviewed / p['merged']:.1f}" if p["merged"] else "reviews only"
         share = 100 * reviewed / (reviewed + p["merged"])
-        rows += (f'<tr><td>{avatar(login, github_to_org.get(login, "Unknown"))}</td>'
+        hidden = "" if activity(p) >= MIN_RATIO_ACTIVITY else " hidden"
+        rows += (f'<tr data-activity="{activity(p)}"{hidden}>'
+                 f'<td>{avatar(login, github_to_org.get(login, "Unknown"))}</td>'
                  f'<td class="num">{p["merged"]}</td><td class="num">{reviewed}</td><td class="num"><b>{ratio}</b></td>'
                  f'<td><div class="balance"><i style="width:{share:.0f}%"></i></div></td></tr>')
-    return f"""{fig.to_html(full_html=False, include_plotlyjs="cdn")}
+
+    buttons = "".join(
+        f'<button type="button" data-min="{t}"{" class=active" if t == MIN_RATIO_ACTIVITY else ""}>{t}+</button>'
+        for t in RATIO_THRESHOLDS
+    )
+    counts = {t: sum(1 for p in eligible.values() if activity(p) >= t) for t in RATIO_THRESHOLDS}
+    return f"""<div class="toggle" id="ratio-toggle">Show people with at least {buttons}
+    merged PRs and reviews combined <span id="ratio-count">({counts[MIN_RATIO_ACTIVITY]} people)</span></div>
+  {fig.to_html(full_html=False, include_plotlyjs="cdn", div_id="ratio-chart")}
+  <script>
+    (function () {{
+      var views = {json.dumps(views)};
+      var counts = {json.dumps(counts)};
+      var traces = {json.dumps(list(range(len(orgs))))};
+      document.querySelectorAll("#ratio-toggle button").forEach(function (button) {{
+        button.addEventListener("click", function () {{
+          var min = Number(button.dataset.min), view = views[min];
+          Plotly.restyle("ratio-chart", {{x: view.x, y: view.y, text: view.text,
+                                         customdata: view.customdata, visible: view.visible}}, traces);
+          Plotly.relayout("ratio-chart", {{"xaxis.range": [0, view.top], "yaxis.range": [0, view.top]}});
+          document.querySelectorAll("table.ratio tbody tr").forEach(function (row) {{
+            row.hidden = Number(row.dataset.activity) < min;
+          }});
+          document.getElementById("ratio-count").textContent = "(" + counts[min] + " people)";
+          document.querySelectorAll("#ratio-toggle button").forEach(function (b) {{
+            b.classList.toggle("active", b === button);
+          }});
+        }});
+      }});
+    }})();
+  </script>
   <table class="ratio">
     <thead><tr><th>Person</th><th>PRs merged</th><th>PRs reviewed</th><th>Reviews per PR</th>
     <th><span class="key-review">Reviewing</span> / <span class="key-write">writing</span></th></tr></thead>
@@ -282,6 +340,10 @@ STYLE = """
     table.ratio th, table.ratio td { padding: 6px 10px 6px 0; text-align: left; border-bottom: 1px solid #e3e6ea; }
     table.ratio th:nth-child(2), table.ratio th:nth-child(3), table.ratio th:nth-child(4),
     table.ratio td.num { text-align: right; padding-right: 24px; }
+    .toggle { margin: 4px 0 8px; font-size: 0.9em; color: #555; }
+    .toggle button { margin: 0 2px; padding: 4px 10px; border: 1px solid #c5ccd5; border-radius: 4px;
+      background: #fff; color: #1d3557; cursor: pointer; font-size: 0.95em; }
+    .toggle button.active { background: #1d3557; border-color: #1d3557; color: #fff; }
     .key-review { color: #2a9d8f; }
     .key-write { color: #e07b39; }
     .balance { width: 160px; height: 10px; background: #f4a261; border-radius: 5px; overflow: hidden; }
@@ -355,9 +417,9 @@ def main():
   <div class="boards">{"".join(boards)}</div>
 
   <h2>Reviewing and writing</h2>
-  <p class="lead">Reviews given for every PR merged, for everyone with at least {MIN_RATIO_ACTIVITY} merged PRs and
-  reviews combined. Above the dashed line, someone reviews more than they write. Neither side is better —
-  a healthy project needs both.</p>
+  <p class="lead">Reviews given for every PR merged. Above the dashed line, someone reviews more than they write.
+  Neither side is better — a healthy project needs both. Names on the chart are shown for people with
+  {MIN_RATIO_ACTIVITY}+; hover over a point for anyone else.</p>
   {ratio_section(people, github_to_org, color_map)}
 
   <h2>Making Anemoi faster</h2>
