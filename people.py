@@ -65,7 +65,6 @@ def collect(caches, github_to_org, exclude, since, as_of):
         "lifetime_repos": set(),
     })
     newcomers = {}
-    perf_prs = []
 
     def is_person(identity):
         return identity and not identity.startswith("email:") and github_to_org.get(identity) not in exclude
@@ -115,8 +114,6 @@ def collect(caches, github_to_org, exclude, since, as_of):
                 continue
             pr_type = classify_pr_type(pr.get("title"))
             is_perf = pr_type == "perf"
-            if is_perf and credited:
-                perf_prs.append((repo, number, pr.get("title") or "", merged_at, sorted(credited)))
             for identity in credited:
                 if is_perf:
                     person[identity]["perf"] += 1
@@ -136,7 +133,7 @@ def collect(caches, github_to_org, exclude, since, as_of):
 
     active = {login: p for login, p in person.items()
               if p["merged"] or p["reviewed"] or p["issues"]}
-    return active, newcomers, first_seen, perf_prs
+    return active, newcomers, first_seen
 
 
 def badge_value(login, p, key, first_seen, as_of):
@@ -309,18 +306,6 @@ def newcomers_section(newcomers, github_to_org):
     return f'<ul class="newcomers">{items}</ul>'
 
 
-def perf_section(perf_prs, github_to_org):
-    if not perf_prs:
-        return ""
-    items = ""
-    for repo, number, title, merged_at, credited in sorted(perf_prs, key=lambda t: t[3], reverse=True):
-        people = " ".join(avatar(login, github_to_org.get(login, "Unknown"), 22) for login in credited)
-        items += (f'<li><a class="pr" href="https://github.com/{REPO_OWNER}/{repo}/pull/{number}">'
-                  f'{escape(title)}</a> <small>{repo} · {merged_at:%d %b %Y}</small><br>{people}</li>')
-    return f"""<details><summary>All {len(perf_prs)} <code>perf:</code> PRs merged in this period</summary>
-    <ul class="perf">{items}</ul></details>"""
-
-
 STYLE = """
     body { font-family: sans-serif; max-width: 1100px; margin: 40px auto; padding: 0 20px; color: #333; }
     h2 { margin-top: 2em; }
@@ -358,13 +343,6 @@ STYLE = """
     ul.newcomers li { padding: 4px 0; border-bottom: 1px solid #e3e6ea; }
     ul.newcomers a.pr { margin-left: 10px; color: #333; }
     ul.newcomers small { color: #8d99ae; margin-left: 6px; }
-    details summary { cursor: pointer; color: #1d3557; margin-top: 14px; }
-    ul.perf { list-style: none; padding: 0; margin: 8px 0 0; }
-    ul.perf li { padding: 8px 0; border-bottom: 1px solid #e3e6ea; line-height: 1.9; }
-    ul.perf a.pr { color: #333; }
-    ul.perf small { color: #8d99ae; margin-left: 6px; }
-    ul.perf a.who { margin-right: 4px; }
-    ul.perf a.who + small { margin-right: 14px; }
 """
 
 
@@ -378,7 +356,7 @@ def main():
     github_to_org = load_github_to_org_mapping()
     exclude, _ = load_org_config()
     caches = {repo: load_cache(repo) for repo in REPO_LIST}
-    people, newcomers, first_seen, perf_prs = collect(caches, github_to_org, exclude, since, as_of)
+    people, newcomers, first_seen = collect(caches, github_to_org, exclude, since, as_of)
 
     # The site's organisation colours, so people match their organisation elsewhere.
     color_map = site_color_map(latest=latest)
@@ -421,13 +399,6 @@ def main():
   Neither side is better — a healthy project needs both. Names on the chart are shown for people with
   {MIN_RATIO_ACTIVITY}+; hover over a point for anyone else.</p>
   {ratio_section(people, github_to_org, color_map)}
-
-  <h2>Making Anemoi faster</h2>
-  <p class="lead">Merged PRs marked as performance work with a <code>perf:</code> title prefix. Credit goes to
-  everyone on the PR.</p>
-  <div class="boards">{leaderboard("Performance PRs", "Merged <code>perf:</code> PRs.",
-                                   people, github_to_org, lambda p: p["perf"])}</div>
-  {perf_section(perf_prs, github_to_org)}
 
   <h2>Achievements</h2>
   <p class="lead">Earned in {period}.</p>
