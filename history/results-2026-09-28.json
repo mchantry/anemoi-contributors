@@ -164,7 +164,7 @@
         "ECMWF": 170,
         "MeteoFrance": 5,
         "Other": 3,
-        "CodeAgents": 8,
+        "CodeAgents": 10,
         "DMI": 4,
         "RMI": 14,
         "DWD": 4,
@@ -172,7 +172,7 @@
         "METNorway": 6,
         "MeteoSwiss": 17,
         "UKMO": 2,
-        "Unknown": 7,
+        "Unknown": 5,
         "KNMI": 1,
         "NOAA": 1,
         "FMI": 1
@@ -208,8 +208,8 @@
           "MeteoSwiss": 5,
           "DMI": 1,
           "UKMO": 1,
-          "Unknown": 3,
-          "CodeAgents": 2,
+          "Unknown": 2,
+          "CodeAgents": 3,
           "NOAA": 1
         },
         "docs": {
@@ -221,8 +221,8 @@
         },
         "test": {
           "ECMWF": 6,
-          "Unknown": 1,
-          "Bots": 1
+          "Bots": 1,
+          "CodeAgents": 1
         },
         "other": {
           "ECMWF": 5,
@@ -262,7 +262,7 @@
         "ECMWF": 26,
         "Other": 3,
         "MeteoFrance": 2,
-        "CodeAgents": 2,
+        "CodeAgents": 3,
         "DMI": 1,
         "RMI": 2,
         "DWD": 2,
@@ -270,16 +270,16 @@
         "METNorway": 4,
         "MeteoSwiss": 1,
         "UKMO": 2,
-        "Unknown": 6,
+        "Unknown": 5,
         "KNMI": 1,
         "NOAA": 1,
         "FMI": 1
       },
       "new_contributors": {
         "Other": 3,
-        "CodeAgents": 1,
+        "CodeAgents": 2,
         "UKMO": 2,
-        "Unknown": 5,
+        "Unknown": 4,
         "ECMWF": 3,
         "FMI": 1
       },
@@ -322,10 +322,10 @@
           "median_additions": 68
         },
         "CodeAgents": {
-          "additions": 774,
-          "deletions": 150,
-          "changed_files": 27,
-          "median_additions": 41.5
+          "additions": 4998,
+          "deletions": 3044,
+          "changed_files": 81,
+          "median_additions": 125.0
         },
         "DMI": {
           "additions": 250,
@@ -370,10 +370,10 @@
           "median_additions": 67.5
         },
         "Unknown": {
-          "additions": 10305,
-          "deletions": 5215,
-          "changed_files": 168,
-          "median_additions": 233
+          "additions": 6081,
+          "deletions": 2321,
+          "changed_files": 114,
+          "median_additions": 222
         },
         "KNMI": {
           "additions": 168,
@@ -607,7 +607,7 @@
       },
       "attribution": {
         "total_credits": 713,
-        "unknown_credits": 20
+        "unknown_credits": 18
       }
     },
     "anemoi-datasets": {
@@ -632,10 +632,9 @@
         "BSC": 2,
         "UKMO": 4,
         "Met Eirann": 1,
-        "Unknown": 4,
         "RMI": 1,
         "MeteoSwiss": 5,
-        "CodeAgents": 5,
+        "CodeAgents": 9,
         "METNorway": 1,
         "Bull": 1
       },
@@ -661,10 +660,9 @@
           "ECMWF": 40,
           "UKMO": 2,
           "Met Eirann": 1,
-          "Unknown": 4,
           "RMI": 1,
           "MeteoSwiss": 3,
-          "CodeAgents": 4
+          "CodeAgents": 8
         },
         "refactor": {
           "MeteoSwiss": 1
@@ -694,10 +692,9 @@
         "BSC": 1,
         "UKMO": 3,
         "Met Eirann": 1,
-        "Unknown": 1,
         "RMI": 1,
         "MeteoSwiss": 2,
-        "CodeAgents": 3,
+        "CodeAgents": 4,
         "METNorway": 1,
         "Bull": 1
       },
@@ -705,9 +702,8 @@
         "BSC": 1,
         "UKMO": 2,
         "Met Eirann": 1,
-        "Unknown": 1,
         "ECMWF": 1,
-        "CodeAgents": 2,
+        "CodeAgents": 3,
         "Bull": 1
       },
       "reviewers": {
@@ -750,12 +746,6 @@
           "changed_files": 1,
           "median_additions": 13
         },
-        "Unknown": {
-          "additions": 8674,
-          "deletions": 1884,
-          "changed_files": 125,
-          "median_additions": 686.0
-        },
         "RMI": {
           "additions": 294,
           "deletions": 2,
@@ -769,10 +759,10 @@
           "median_additions": 157
         },
         "CodeAgents": {
-          "additions": 1051,
-          "deletions": 8,
-          "changed_files": 23,
-          "median_additions": 19
+          "additions": 9725,
+          "deletions": 1892,
+          "changed_files": 148,
+          "median_additions": 252
         },
         "METNorway": {
           "additions": 3,
@@ -916,7 +906,7 @@
       },
       "attribution": {
         "total_credits": 285,
-        "unknown_credits": 8
+        "unknown_credits": 4
       }
     },
     "anemoi-inference": {
@@ -933,18 +923,18 @@
       },
       "pull_requests": {
         "Bots": 24,
-        "Unknown": 3,
+        "Unknown": 2,
         "ECMWF": 42,
         "RMI": 5,
         "MeteoSwiss": 6,
         "MeteoFrance": 1,
-        "CodeAgents": 2
+        "CodeAgents": 3
       },
       "pull_requests_by_type": {
         "chore": {
           "Bots": 10,
           "ECMWF": 3,
-          "Unknown": 1
+          "CodeAgents": 1
         },
         "fix": {
           "Unknown": 1,
@@ -987,17 +977,18 @@
       },
       "contributors": {
         "Bots": 2,
-        "Unknown": 3,
+        "Unknown": 2,
         "ECMWF": 15,
         "RMI": 2,
         "MeteoSwiss": 4,
         "MeteoFrance": 1,
-        "CodeAgents": 1
+        "CodeAgents": 2
       },
       "new_contributors": {
-        "Unknown": 3,
+        "Unknown": 2,
         "MeteoSwiss": 3,
-        "ECMWF": 2
+        "ECMWF": 2,
+        "CodeAgents": 1
       },
       "reviewers": {
         "ECMWF": 11,
@@ -1013,9 +1004,9 @@
         },
         "Unknown": {
           "additions": 69,
-          "deletions": 59,
-          "changed_files": 4,
-          "median_additions": 1
+          "deletions": 1,
+          "changed_files": 2,
+          "median_additions": 34.5
         },
         "ECMWF": {
           "additions": 4244,
@@ -1043,9 +1034,9 @@
         },
         "CodeAgents": {
           "additions": 1148,
-          "deletions": 2,
-          "changed_files": 12,
-          "median_additions": 574.0
+          "deletions": 60,
+          "changed_files": 14,
+          "median_additions": 1
         }
       },
       "review_matrix": {
@@ -1119,7 +1110,7 @@
       },
       "attribution": {
         "total_credits": 180,
-        "unknown_credits": 5
+        "unknown_credits": 4
       }
     },
     "anemoi-transform": {
@@ -1133,16 +1124,16 @@
         "ECMWF": 35,
         "RMI": 3,
         "UKMO": 2,
-        "CodeAgents": 2,
+        "CodeAgents": 4,
         "MeteoSwiss": 1,
-        "Unknown": 3,
+        "Unknown": 1,
         "METNorway": 1
       },
       "pull_requests_by_type": {
         "chore": {
           "Bots": 16,
           "ECMWF": 8,
-          "Unknown": 1
+          "CodeAgents": 1
         },
         "feat": {
           "ECMWF": 19,
@@ -1167,8 +1158,8 @@
           "UKMO": 1
         },
         "perf": {
-          "Unknown": 1,
-          "METNorway": 1
+          "METNorway": 1,
+          "CodeAgents": 1
         }
       },
       "prs_reviewed": {
@@ -1182,14 +1173,15 @@
         "ECMWF": 10,
         "RMI": 1,
         "UKMO": 1,
-        "CodeAgents": 2,
+        "CodeAgents": 3,
         "MeteoSwiss": 1,
         "METNorway": 1,
-        "Unknown": 2
+        "Unknown": 1
       },
       "new_contributors": {
         "ECMWF": 2,
-        "Unknown": 2
+        "Unknown": 1,
+        "CodeAgents": 1
       },
       "reviewers": {
         "ECMWF": 8,
@@ -1223,9 +1215,9 @@
           "median_additions": 510.5
         },
         "CodeAgents": {
-          "additions": 33,
-          "deletions": 30,
-          "changed_files": 4,
+          "additions": 290,
+          "deletions": 119,
+          "changed_files": 8,
           "median_additions": 16.5
         },
         "MeteoSwiss": {
@@ -1235,9 +1227,9 @@
           "median_additions": 139
         },
         "Unknown": {
-          "additions": 268,
-          "deletions": 90,
-          "changed_files": 5,
+          "additions": 11,
+          "deletions": 1,
+          "changed_files": 1,
           "median_additions": 11
         },
         "METNorway": {
@@ -1330,7 +1322,7 @@
       },
       "attribution": {
         "total_credits": 130,
-        "unknown_credits": 3
+        "unknown_credits": 1
       }
     },
     "anemoi-utils": {
@@ -1528,7 +1520,7 @@
     "pull_requests": {
       "Bots": 164,
       "ECMWF": 357,
-      "CodeAgents": 20,
+      "CodeAgents": 29,
       "METNorway": 9,
       "MeteoFrance": 6,
       "Other": 3,
@@ -1538,7 +1530,7 @@
       "Predictia": 1,
       "MeteoSwiss": 30,
       "UKMO": 9,
-      "Unknown": 17,
+      "Unknown": 8,
       "KNMI": 1,
       "NOAA": 1,
       "FMI": 1,
@@ -1550,9 +1542,8 @@
       "chore": {
         "Bots": 79,
         "ECMWF": 30,
-        "CodeAgents": 1,
-        "RMI": 1,
-        "Unknown": 2
+        "CodeAgents": 3,
+        "RMI": 1
       },
       "feat": {
         "ECMWF": 134,
@@ -1563,17 +1554,18 @@
         "MeteoSwiss": 12,
         "DMI": 1,
         "UKMO": 5,
-        "Unknown": 8,
-        "CodeAgents": 9,
+        "Unknown": 3,
+        "CodeAgents": 14,
         "NOAA": 1,
         "Met Eirann": 2,
         "MeteoFrance": 1
       },
       "test": {
         "ECMWF": 17,
-        "Unknown": 2,
+        "Unknown": 1,
         "Bots": 3,
-        "MeteoSwiss": 1
+        "MeteoSwiss": 1,
+        "CodeAgents": 1
       },
       "docs": {
         "CodeAgents": 4,
@@ -1620,8 +1612,8 @@
         "MeteoSwiss": 4,
         "Bots": 2,
         "RMI": 1,
-        "Unknown": 1,
-        "METNorway": 1
+        "METNorway": 1,
+        "CodeAgents": 1
       }
     },
     "prs_reviewed": {
@@ -1641,7 +1633,7 @@
     "contributors": {
       "Bots": 2,
       "ECMWF": 33,
-      "CodeAgents": 4,
+      "CodeAgents": 5,
       "METNorway": 7,
       "Other": 3,
       "MeteoFrance": 2,
@@ -1651,7 +1643,7 @@
       "Predictia": 1,
       "MeteoSwiss": 5,
       "UKMO": 5,
-      "Unknown": 9,
+      "Unknown": 8,
       "KNMI": 1,
       "NOAA": 1,
       "FMI": 1,
@@ -1662,9 +1654,9 @@
     "new_contributors": {
       "ECMWF": 4,
       "Other": 3,
-      "CodeAgents": 2,
+      "CodeAgents": 3,
       "UKMO": 4,
-      "Unknown": 8,
+      "Unknown": 7,
       "FMI": 1,
       "BSC": 1,
       "Met Eirann": 1,
@@ -1699,10 +1691,10 @@
         "median_additions": 48
       },
       "CodeAgents": {
-        "additions": 3560,
-        "deletions": 223,
-        "changed_files": 78,
-        "median_additions": 47.5
+        "additions": 16715,
+        "deletions": 5148,
+        "changed_files": 263,
+        "median_additions": 86
       },
       "METNorway": {
         "additions": 4119,
@@ -1759,10 +1751,10 @@
         "median_additions": 40
       },
       "Unknown": {
-        "additions": 19316,
-        "deletions": 7248,
-        "changed_files": 302,
-        "median_additions": 222
+        "additions": 6161,
+        "deletions": 2323,
+        "changed_files": 117,
+        "median_additions": 141.5
       },
       "KNMI": {
         "additions": 168,
@@ -2049,7 +2041,7 @@
     },
     "attribution": {
       "total_credits": 1471,
-      "unknown_credits": 37
+      "unknown_credits": 28
     }
   },
   "project": {
