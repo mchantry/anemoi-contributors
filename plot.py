@@ -1007,8 +1007,9 @@ def main():
     (<code>feat</code>, <code>fix</code>, <code>refactor</code>, <code>docs</code>, etc.) parsed from the PR title.
     PRs whose title does not match a known prefix are grouped as <code>other</code>.</li>
     <li><strong>Who is contributing:</strong> distinct people, not events. Someone active in several repositories is
-    counted once. A contributor is anyone credited on a merged PR; a co-author identified only by email address counts
-    as one person via a salted hash of that address. <em>First-time</em> means their earliest merged PR anywhere in
+    counted once. A contributor is anyone credited on a merged PR; a co-author email linked to a GitHub login in
+    <code>email_to_login.json</code> counts as that same person, and any other co-author identified only by email
+    address counts as one person via a salted hash of that address. <em>First-time</em> means their earliest merged PR anywhere in
     Anemoi falls inside this window.</li>
     <li><strong>Who reviews whom:</strong> the same reviews as PRs Reviewed, split by the organisation of the PR's
     opener, so each cell is a count of distinct PRs. Raw counts differ by orders of magnitude between organisations,

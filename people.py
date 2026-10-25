@@ -415,8 +415,9 @@ def main():
   <h2>Methodology</h2>
   <p>Built from the same cached GitHub data and the same {months}-month window as the
   <a href="index.html">organisation view</a>, across {", ".join(REPO_LIST)}. A merged PR is credited to its opener,
-  every commit author and every <code>Co-authored-by:</code> GitHub user; co-authors known only by email address are
-  left out, as they have no public profile to show. PRs reviewed counts distinct PRs, not review comments, and never a
+  every commit author and every <code>Co-authored-by:</code> GitHub user. A co-author email linked to a GitHub login in
+  <code>email_to_login.json</code> counts as that person; other co-authors known only by email address are left out,
+  as they have no public profile to show. PRs reviewed counts distinct PRs, not review comments, and never a
   person's own PR. Bots and code agents are excluded throughout.</p>
 </body>
 </html>"""

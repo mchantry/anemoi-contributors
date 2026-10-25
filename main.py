@@ -56,6 +56,19 @@ def save_email_to_org_mapping(mapping):
         json.dump(mapping, f, indent=2)
 
 
+def load_email_to_login_mapping():
+    """Co-author email hashes linked to a GitHub login. Keys starting `_` are notes."""
+    try:
+        with open("email_to_login.json", "r") as f:
+            mapping = json.load(f)
+    except FileNotFoundError:
+        return {}
+    return {h: login for h, login in mapping.items() if not h.startswith("_")}
+
+
+EMAIL_TO_LOGIN = load_email_to_login_mapping()
+
+
 def load_org_config():
     """The `exclude` list and `host` organisation from orgs.json."""
     with open("orgs.json", "r") as f:
@@ -93,15 +106,16 @@ def classify_pr_type(title):
 def _pr_identities(pr):
     """Everyone credited on a PR: opener, commit authors, co-authors.
 
-    Co-authors known only by a hashed email still count as distinct people, so
-    they get a synthetic identity that cannot collide with a GitHub login.
+    A hashed co-author email linked to a login in `email_to_login.json` counts
+    as that login. Any other hashed email still counts as a distinct person, with
+    a synthetic identity that cannot collide with a GitHub login.
     """
     ids = set()
     if pr.get("user"):
         ids.add(pr["user"])
     ids.update(pr.get("commit_authors", []))
     ids.update(pr.get("coauthor_logins", []))
-    ids.update(f"email:{h}" for h in pr.get("coauthor_email_hashes", []))
+    ids.update(EMAIL_TO_LOGIN.get(h) or f"email:{h}" for h in pr.get("coauthor_email_hashes", []))
     return ids
 
 
