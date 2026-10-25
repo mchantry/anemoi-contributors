@@ -106,11 +106,11 @@
           "median_hours_to_first_review": 1.8,
           "reviewed_prs": 1
         },
-        "Bots": {
-          "merged_prs": 11,
-          "median_hours_to_merge": 20.9,
-          "median_hours_to_first_review": 31.2,
-          "reviewed_prs": 10
+        "DWD": {
+          "merged_prs": 1,
+          "median_hours_to_merge": 10.7,
+          "median_hours_to_first_review": 10.7,
+          "reviewed_prs": 1
         },
         "ECMWF": {
           "merged_prs": 15,
@@ -118,11 +118,11 @@
           "median_hours_to_first_review": 1.3,
           "reviewed_prs": 14
         },
-        "DWD": {
-          "merged_prs": 1,
-          "median_hours_to_merge": 10.7,
-          "median_hours_to_first_review": 10.7,
-          "reviewed_prs": 1
+        "Bots": {
+          "merged_prs": 11,
+          "median_hours_to_merge": 20.9,
+          "median_hours_to_first_review": 31.2,
+          "reviewed_prs": 10
         }
       },
       "attribution": {
@@ -153,8 +153,8 @@
         "Bots": 87,
         "MeteoFrance": 7,
         "ECMWF": 178,
-        "NOAA": 6,
         "Turing": 5,
+        "NOAA": 6,
         "RMI": 13,
         "LEGMC": 1,
         "UKMO": 1,
@@ -190,8 +190,8 @@
         },
         "fix": {
           "ECMWF": 94,
-          "RMI": 6,
           "Bots": 23,
+          "RMI": 6,
           "NOAA": 3,
           "Turing": 3,
           "LEGMC": 1,
@@ -206,8 +206,8 @@
         "feat": {
           "Bots": 25,
           "ECMWF": 35,
-          "NOAA": 3,
           "Turing": 2,
+          "NOAA": 3,
           "UKMO": 1,
           "MeteoSwiss": 2,
           "RMI": 2,
@@ -245,8 +245,8 @@
         "Bots": 2,
         "MeteoFrance": 2,
         "ECMWF": 21,
-        "NOAA": 1,
         "Turing": 2,
+        "NOAA": 1,
         "RMI": 2,
         "LEGMC": 1,
         "UKMO": 1,
@@ -299,17 +299,17 @@
           "changed_files": 1256,
           "median_additions": 20.0
         },
-        "NOAA": {
-          "additions": 1450,
-          "deletions": 378,
-          "changed_files": 36,
-          "median_additions": 8.5
-        },
         "Turing": {
           "additions": 1440,
           "deletions": 390,
           "changed_files": 34,
           "median_additions": 10
+        },
+        "NOAA": {
+          "additions": 1450,
+          "deletions": 378,
+          "changed_files": 36,
+          "median_additions": 8.5
         },
         "RMI": {
           "additions": 14775,
@@ -475,10 +475,22 @@
         }
       },
       "latency": {
-        "UKMO": {
+        "DWD": {
+          "merged_prs": 2,
+          "median_hours_to_merge": 110.9,
+          "median_hours_to_first_review": 217.5,
+          "reviewed_prs": 1
+        },
+        "MeteoSwiss": {
+          "merged_prs": 12,
+          "median_hours_to_merge": 168.2,
+          "median_hours_to_first_review": 18.8,
+          "reviewed_prs": 12
+        },
+        "LEGMC": {
           "merged_prs": 1,
-          "median_hours_to_merge": 189.1,
-          "median_hours_to_first_review": 143.6,
+          "median_hours_to_merge": 597.1,
+          "median_hours_to_first_review": 597.0,
           "reviewed_prs": 1
         },
         "ECMWF": {
@@ -487,23 +499,11 @@
           "median_hours_to_first_review": 4.1,
           "reviewed_prs": 148
         },
-        "Turing": {
-          "merged_prs": 3,
-          "median_hours_to_merge": 19.3,
-          "median_hours_to_first_review": 15.5,
-          "reviewed_prs": 3
-        },
-        "DWD": {
-          "merged_prs": 2,
-          "median_hours_to_merge": 110.9,
-          "median_hours_to_first_review": 217.5,
-          "reviewed_prs": 1
-        },
-        "RMI": {
+        "MeteoFrance": {
           "merged_prs": 8,
-          "median_hours_to_merge": 46.3,
-          "median_hours_to_first_review": 21.2,
-          "reviewed_prs": 7
+          "median_hours_to_merge": 23.1,
+          "median_hours_to_first_review": 3.3,
+          "reviewed_prs": 8
         },
         "METNorway": {
           "merged_prs": 3,
@@ -517,11 +517,23 @@
           "median_hours_to_first_review": 16.2,
           "reviewed_prs": 5
         },
+        "UKMO": {
+          "merged_prs": 1,
+          "median_hours_to_merge": 189.1,
+          "median_hours_to_first_review": 143.6,
+          "reviewed_prs": 1
+        },
         "DMI": {
           "merged_prs": 5,
           "median_hours_to_merge": 21.3,
           "median_hours_to_first_review": 5.0,
           "reviewed_prs": 5
+        },
+        "Turing": {
+          "merged_prs": 3,
+          "median_hours_to_merge": 19.3,
+          "median_hours_to_first_review": 15.5,
+          "reviewed_prs": 3
         },
         "Statkraft": {
           "merged_prs": 1,
@@ -529,29 +541,17 @@
           "median_hours_to_first_review": 48.1,
           "reviewed_prs": 1
         },
+        "RMI": {
+          "merged_prs": 8,
+          "median_hours_to_merge": 46.3,
+          "median_hours_to_first_review": 21.2,
+          "reviewed_prs": 7
+        },
         "Bots": {
           "merged_prs": 25,
           "median_hours_to_merge": 141.3,
           "median_hours_to_first_review": 151.6,
           "reviewed_prs": 24
-        },
-        "MeteoFrance": {
-          "merged_prs": 8,
-          "median_hours_to_merge": 23.1,
-          "median_hours_to_first_review": 3.3,
-          "reviewed_prs": 8
-        },
-        "MeteoSwiss": {
-          "merged_prs": 12,
-          "median_hours_to_merge": 168.2,
-          "median_hours_to_first_review": 18.8,
-          "reviewed_prs": 12
-        },
-        "LEGMC": {
-          "merged_prs": 1,
-          "median_hours_to_merge": 597.1,
-          "median_hours_to_first_review": 597.0,
-          "reviewed_prs": 1
         },
         "NVIDIA": {
           "merged_prs": 1,
@@ -772,24 +772,6 @@
           "median_hours_to_first_review": 30.9,
           "reviewed_prs": 2
         },
-        "Bots": {
-          "merged_prs": 14,
-          "median_hours_to_merge": 54.7,
-          "median_hours_to_first_review": 54.7,
-          "reviewed_prs": 14
-        },
-        "ECMWF": {
-          "merged_prs": 41,
-          "median_hours_to_merge": 89.2,
-          "median_hours_to_first_review": 16.4,
-          "reviewed_prs": 34
-        },
-        "MeteoFrance": {
-          "merged_prs": 2,
-          "median_hours_to_merge": 13.1,
-          "median_hours_to_first_review": 4.5,
-          "reviewed_prs": 2
-        },
         "MeteoSwiss": {
           "merged_prs": 3,
           "median_hours_to_merge": 647.8,
@@ -801,6 +783,24 @@
           "median_hours_to_merge": 218.9,
           "median_hours_to_first_review": 28.1,
           "reviewed_prs": 1
+        },
+        "ECMWF": {
+          "merged_prs": 41,
+          "median_hours_to_merge": 89.2,
+          "median_hours_to_first_review": 16.4,
+          "reviewed_prs": 34
+        },
+        "Bots": {
+          "merged_prs": 14,
+          "median_hours_to_merge": 54.7,
+          "median_hours_to_first_review": 54.7,
+          "reviewed_prs": 14
+        },
+        "MeteoFrance": {
+          "merged_prs": 2,
+          "median_hours_to_merge": 13.1,
+          "median_hours_to_first_review": 4.5,
+          "reviewed_prs": 2
         },
         "METNorway": {
           "merged_prs": 4,
@@ -836,9 +836,9 @@
       "pull_requests_by_type": {
         "feat": {
           "ECMWF": 16,
-          "Bots": 4,
           "CodeAgents": 1,
           "MeteoSwiss": 2,
+          "Bots": 4,
           "METNorway": 2
         },
         "refactor": {
@@ -998,24 +998,6 @@
         }
       },
       "latency": {
-        "Bots": {
-          "merged_prs": 20,
-          "median_hours_to_merge": 105.1,
-          "median_hours_to_first_review": 63.4,
-          "reviewed_prs": 17
-        },
-        "ECMWF": {
-          "merged_prs": 55,
-          "median_hours_to_merge": 69.0,
-          "median_hours_to_first_review": 19.4,
-          "reviewed_prs": 53
-        },
-        "MeteoFrance": {
-          "merged_prs": 1,
-          "median_hours_to_merge": 20.3,
-          "median_hours_to_first_review": 20.3,
-          "reviewed_prs": 1
-        },
         "MeteoSwiss": {
           "merged_prs": 2,
           "median_hours_to_merge": 196.0,
@@ -1026,6 +1008,24 @@
           "merged_prs": 1,
           "median_hours_to_merge": 24.1,
           "median_hours_to_first_review": 24.1,
+          "reviewed_prs": 1
+        },
+        "ECMWF": {
+          "merged_prs": 55,
+          "median_hours_to_merge": 69.0,
+          "median_hours_to_first_review": 19.4,
+          "reviewed_prs": 53
+        },
+        "Bots": {
+          "merged_prs": 20,
+          "median_hours_to_merge": 105.1,
+          "median_hours_to_first_review": 63.4,
+          "reviewed_prs": 17
+        },
+        "MeteoFrance": {
+          "merged_prs": 1,
+          "median_hours_to_merge": 20.3,
+          "median_hours_to_first_review": 20.3,
           "reviewed_prs": 1
         },
         "METNorway": {
@@ -1050,8 +1050,8 @@
         "UBC": 1
       },
       "pull_requests": {
-        "MeteoFrance": 1,
         "Bots": 27,
+        "MeteoFrance": 1,
         "ECMWF": 23,
         "RMI": 3,
         "KNMI": 2,
@@ -1061,8 +1061,8 @@
       },
       "pull_requests_by_type": {
         "feat": {
-          "MeteoFrance": 1,
           "Bots": 8,
+          "MeteoFrance": 1,
           "ECMWF": 5,
           "RMI": 1,
           "KNMI": 2,
@@ -1094,8 +1094,8 @@
         "MeteoSwiss": 1
       },
       "contributors": {
-        "Bots": 2,
         "ECMWF": 8,
+        "Bots": 2,
         "MeteoFrance": 1,
         "RMI": 1,
         "KNMI": 1,
@@ -1113,17 +1113,17 @@
         "MeteoSwiss": 1
       },
       "pr_size": {
-        "MeteoFrance": {
-          "additions": 6,
-          "deletions": 3,
-          "changed_files": 2,
-          "median_additions": 6
-        },
         "Bots": {
           "additions": 1350,
           "deletions": 233,
           "changed_files": 50,
           "median_additions": 10
+        },
+        "MeteoFrance": {
+          "additions": 6,
+          "deletions": 3,
+          "changed_files": 2,
+          "median_additions": 6
         },
         "ECMWF": {
           "additions": 2862,
@@ -1204,34 +1204,10 @@
         }
       },
       "latency": {
-        "DMI": {
-          "merged_prs": 2,
-          "median_hours_to_merge": 10.0,
-          "median_hours_to_first_review": 9.2,
-          "reviewed_prs": 2
-        },
-        "Bots": {
-          "merged_prs": 18,
-          "median_hours_to_merge": 55.1,
-          "median_hours_to_first_review": 24.3,
-          "reviewed_prs": 18
-        },
-        "ECMWF": {
-          "merged_prs": 22,
-          "median_hours_to_merge": 23.1,
-          "median_hours_to_first_review": 16.4,
-          "reviewed_prs": 19
-        },
-        "MeteoFrance": {
-          "merged_prs": 2,
-          "median_hours_to_merge": 995.1,
-          "median_hours_to_first_review": 34.1,
-          "reviewed_prs": 2
-        },
-        "MeteoSwiss": {
+        "KNMI": {
           "merged_prs": 1,
-          "median_hours_to_merge": 45.5,
-          "median_hours_to_first_review": 45.4,
+          "median_hours_to_merge": 165.0,
+          "median_hours_to_first_review": 1.9,
           "reviewed_prs": 1
         },
         "DWD": {
@@ -1240,16 +1216,40 @@
           "median_hours_to_first_review": 60.5,
           "reviewed_prs": 4
         },
-        "KNMI": {
+        "MeteoSwiss": {
           "merged_prs": 1,
-          "median_hours_to_merge": 165.0,
-          "median_hours_to_first_review": 1.9,
+          "median_hours_to_merge": 45.5,
+          "median_hours_to_first_review": 45.4,
           "reviewed_prs": 1
+        },
+        "DMI": {
+          "merged_prs": 2,
+          "median_hours_to_merge": 10.0,
+          "median_hours_to_first_review": 9.2,
+          "reviewed_prs": 2
         },
         "RMI": {
           "merged_prs": 2,
           "median_hours_to_merge": 120.7,
           "median_hours_to_first_review": 24.8,
+          "reviewed_prs": 2
+        },
+        "ECMWF": {
+          "merged_prs": 22,
+          "median_hours_to_merge": 23.1,
+          "median_hours_to_first_review": 16.4,
+          "reviewed_prs": 19
+        },
+        "Bots": {
+          "merged_prs": 18,
+          "median_hours_to_merge": 55.1,
+          "median_hours_to_first_review": 24.3,
+          "reviewed_prs": 18
+        },
+        "MeteoFrance": {
+          "merged_prs": 2,
+          "median_hours_to_merge": 995.1,
+          "median_hours_to_first_review": 34.1,
           "reviewed_prs": 2
         }
       },
@@ -1285,8 +1285,8 @@
         },
         "feat": {
           "ECMWF": 12,
-          "NOAA": 1,
-          "Bots": 2
+          "Bots": 2,
+          "NOAA": 1
         },
         "refactor": {
           "ECMWF": 1
@@ -1360,30 +1360,6 @@
         }
       },
       "latency": {
-        "NOAA": {
-          "merged_prs": 1,
-          "median_hours_to_merge": 280.3,
-          "median_hours_to_first_review": 185.0,
-          "reviewed_prs": 1
-        },
-        "Bots": {
-          "merged_prs": 23,
-          "median_hours_to_merge": 22.6,
-          "median_hours_to_first_review": 23.6,
-          "reviewed_prs": 21
-        },
-        "ECMWF": {
-          "merged_prs": 32,
-          "median_hours_to_merge": 21.7,
-          "median_hours_to_first_review": 1.6,
-          "reviewed_prs": 31
-        },
-        "MeteoFrance": {
-          "merged_prs": 1,
-          "median_hours_to_merge": 282.3,
-          "median_hours_to_first_review": 146.0,
-          "reviewed_prs": 1
-        },
         "DWD": {
           "merged_prs": 1,
           "median_hours_to_merge": 484.5,
@@ -1394,6 +1370,30 @@
           "merged_prs": 1,
           "median_hours_to_merge": 0.1,
           "median_hours_to_first_review": 0.0,
+          "reviewed_prs": 1
+        },
+        "ECMWF": {
+          "merged_prs": 32,
+          "median_hours_to_merge": 21.7,
+          "median_hours_to_first_review": 1.6,
+          "reviewed_prs": 31
+        },
+        "Bots": {
+          "merged_prs": 23,
+          "median_hours_to_merge": 22.6,
+          "median_hours_to_first_review": 23.6,
+          "reviewed_prs": 21
+        },
+        "MeteoFrance": {
+          "merged_prs": 1,
+          "median_hours_to_merge": 282.3,
+          "median_hours_to_first_review": 146.0,
+          "reviewed_prs": 1
+        },
+        "NOAA": {
+          "merged_prs": 1,
+          "median_hours_to_merge": 280.3,
+          "median_hours_to_first_review": 185.0,
           "reviewed_prs": 1
         }
       },
@@ -1434,8 +1434,8 @@
       "DWD": 11,
       "UKMO": 3,
       "MeteoFrance": 11,
-      "NOAA": 7,
       "Turing": 5,
+      "NOAA": 7,
       "RMI": 18,
       "LEGMC": 1,
       "Statkraft": 1,
@@ -1478,8 +1478,8 @@
       },
       "fix": {
         "ECMWF": 155,
-        "RMI": 10,
         "Bots": 36,
+        "RMI": 10,
         "NOAA": 3,
         "Turing": 3,
         "LEGMC": 1,
@@ -1494,8 +1494,8 @@
       "feat": {
         "ECMWF": 75,
         "Bots": 40,
-        "NOAA": 4,
         "Turing": 2,
+        "NOAA": 4,
         "UKMO": 2,
         "MeteoSwiss": 7,
         "RMI": 3,
@@ -1538,8 +1538,8 @@
       "DWD": 2,
       "UKMO": 3,
       "MeteoFrance": 2,
-      "NOAA": 1,
       "Turing": 2,
+      "NOAA": 1,
       "RMI": 2,
       "LEGMC": 1,
       "Statkraft": 1,
@@ -1606,17 +1606,17 @@
         "changed_files": 17,
         "median_additions": 5
       },
-      "NOAA": {
-        "additions": 1506,
-        "deletions": 379,
-        "changed_files": 38,
-        "median_additions": 9
-      },
       "Turing": {
         "additions": 1440,
         "deletions": 390,
         "changed_files": 34,
         "median_additions": 10
+      },
+      "NOAA": {
+        "additions": 1506,
+        "deletions": 379,
+        "changed_files": 38,
+        "median_additions": 9
       },
       "RMI": {
         "additions": 15155,
@@ -1784,23 +1784,11 @@
       }
     },
     "latency": {
-      "UKMO": {
-        "merged_prs": 3,
-        "median_hours_to_merge": 75.0,
-        "median_hours_to_first_review": 42.5,
-        "reviewed_prs": 3
-      },
-      "ECMWF": {
-        "merged_prs": 320,
-        "median_hours_to_merge": 47.3,
-        "median_hours_to_first_review": 4.7,
-        "reviewed_prs": 299
-      },
-      "Turing": {
-        "merged_prs": 3,
-        "median_hours_to_merge": 19.3,
-        "median_hours_to_first_review": 15.5,
-        "reviewed_prs": 3
+      "KNMI": {
+        "merged_prs": 1,
+        "median_hours_to_merge": 165.0,
+        "median_hours_to_first_review": 1.9,
+        "reviewed_prs": 1
       },
       "DWD": {
         "merged_prs": 9,
@@ -1808,17 +1796,29 @@
         "median_hours_to_first_review": 73.3,
         "reviewed_prs": 8
       },
-      "KNMI": {
+      "MeteoSwiss": {
+        "merged_prs": 18,
+        "median_hours_to_merge": 188.2,
+        "median_hours_to_first_review": 33.2,
+        "reviewed_prs": 18
+      },
+      "LEGMC": {
         "merged_prs": 1,
-        "median_hours_to_merge": 165.0,
-        "median_hours_to_first_review": 1.9,
+        "median_hours_to_merge": 597.1,
+        "median_hours_to_first_review": 597.0,
         "reviewed_prs": 1
       },
-      "RMI": {
-        "merged_prs": 12,
-        "median_hours_to_merge": 35.2,
-        "median_hours_to_first_review": 23.4,
-        "reviewed_prs": 11
+      "ECMWF": {
+        "merged_prs": 320,
+        "median_hours_to_merge": 47.3,
+        "median_hours_to_first_review": 4.7,
+        "reviewed_prs": 299
+      },
+      "MeteoFrance": {
+        "merged_prs": 14,
+        "median_hours_to_merge": 24.8,
+        "median_hours_to_first_review": 6.0,
+        "reviewed_prs": 14
       },
       "METNorway": {
         "merged_prs": 9,
@@ -1832,11 +1832,23 @@
         "median_hours_to_first_review": 48.5,
         "reviewed_prs": 6
       },
+      "UKMO": {
+        "merged_prs": 3,
+        "median_hours_to_merge": 75.0,
+        "median_hours_to_first_review": 42.5,
+        "reviewed_prs": 3
+      },
       "DMI": {
         "merged_prs": 9,
         "median_hours_to_merge": 21.2,
         "median_hours_to_first_review": 9.3,
         "reviewed_prs": 9
+      },
+      "Turing": {
+        "merged_prs": 3,
+        "median_hours_to_merge": 19.3,
+        "median_hours_to_first_review": 15.5,
+        "reviewed_prs": 3
       },
       "Statkraft": {
         "merged_prs": 1,
@@ -1844,29 +1856,17 @@
         "median_hours_to_first_review": 48.1,
         "reviewed_prs": 1
       },
+      "RMI": {
+        "merged_prs": 12,
+        "median_hours_to_merge": 35.2,
+        "median_hours_to_first_review": 23.4,
+        "reviewed_prs": 11
+      },
       "Bots": {
         "merged_prs": 111,
         "median_hours_to_merge": 46.0,
         "median_hours_to_first_review": 44.9,
         "reviewed_prs": 104
-      },
-      "MeteoFrance": {
-        "merged_prs": 14,
-        "median_hours_to_merge": 24.8,
-        "median_hours_to_first_review": 6.0,
-        "reviewed_prs": 14
-      },
-      "MeteoSwiss": {
-        "merged_prs": 18,
-        "median_hours_to_merge": 188.2,
-        "median_hours_to_first_review": 33.2,
-        "reviewed_prs": 18
-      },
-      "LEGMC": {
-        "merged_prs": 1,
-        "median_hours_to_merge": 597.1,
-        "median_hours_to_first_review": 597.0,
-        "reviewed_prs": 1
       },
       "NVIDIA": {
         "merged_prs": 1,
