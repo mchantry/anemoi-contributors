@@ -5837,7 +5837,7 @@
       "is_pull_request": true,
       "number": 758,
       "state": "open",
-      "updated_at": "2026-10-01T10:16:03+00:00",
+      "updated_at": "2026-10-26T08:28:16+00:00",
       "user": "SimonKamuk"
     },
     "759": {
@@ -5845,7 +5845,7 @@
       "is_pull_request": true,
       "number": 759,
       "state": "open",
-      "updated_at": "2026-09-21T15:05:06+00:00",
+      "updated_at": "2026-10-26T09:33:54+00:00",
       "user": "ReubenHill"
     },
     "76": {
@@ -6069,7 +6069,7 @@
       "is_pull_request": true,
       "number": 785,
       "state": "open",
-      "updated_at": "2026-10-24T22:06:31+00:00",
+      "updated_at": "2026-10-26T10:44:32+00:00",
       "user": "alghodon"
     },
     "786": {
@@ -6180,8 +6180,8 @@
       "created_at": "2026-10-21T15:08:58+00:00",
       "is_pull_request": true,
       "number": 798,
-      "state": "open",
-      "updated_at": "2026-10-24T21:46:16+00:00",
+      "state": "closed",
+      "updated_at": "2026-10-25T21:58:14+00:00",
       "user": "MeraX"
     },
     "799": {
@@ -6213,7 +6213,7 @@
       "is_pull_request": true,
       "number": 800,
       "state": "open",
-      "updated_at": "2026-10-23T10:11:13+00:00",
+      "updated_at": "2026-10-26T11:04:30+00:00",
       "user": "Zappandy"
     },
     "801": {
@@ -6237,7 +6237,7 @@
       "is_pull_request": true,
       "number": 803,
       "state": "open",
-      "updated_at": "2026-10-23T10:50:01+00:00",
+      "updated_at": "2026-10-25T21:58:38+00:00",
       "user": "DeployDuck"
     },
     "804": {
@@ -6253,7 +6253,7 @@
       "is_pull_request": true,
       "number": 805,
       "state": "open",
-      "updated_at": "2026-10-23T12:43:20+00:00",
+      "updated_at": "2026-10-26T11:20:16+00:00",
       "user": "frazane"
     },
     "81": {
@@ -6417,8 +6417,8 @@
       "user": "mariahpope"
     }
   },
-  "last_issues_since": "2026-10-25T12:29:26.557220+00:00",
-  "last_refreshed_at": "2026-10-25T13:29:26.557220+00:00",
+  "last_issues_since": "2026-10-26T11:08:05.727503+00:00",
+  "last_refreshed_at": "2026-10-26T12:08:05.727503+00:00",
   "prs": {
     "1": {
       "additions": 31,
@@ -21532,7 +21532,13 @@
       "merged": false,
       "merged_at": null,
       "number": 759,
-      "reviews": [],
+      "reviews": [
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-26T09:33:53+00:00",
+          "user": "aaron-hopkinson"
+        }
+      ],
       "state": "open",
       "title": "fix: Make odb source handle select wildcard correctly and make pivot robust to duplicates",
       "user": "ReubenHill"
@@ -22236,7 +22242,7 @@
     "798": {
       "additions": 10,
       "changed_files": 1,
-      "closed_at": null,
+      "closed_at": "2026-10-25T21:58:11+00:00",
       "coauthor_email_hashes": [],
       "coauthor_logins": [],
       "commit_authors": [
@@ -22244,8 +22250,8 @@
       ],
       "created_at": "2026-10-21T15:08:58+00:00",
       "deletions": 6,
-      "merged": false,
-      "merged_at": null,
+      "merged": true,
+      "merged_at": "2026-10-25T21:58:11+00:00",
       "number": 798,
       "reviews": [
         {
@@ -22254,7 +22260,7 @@
           "user": "mchantry"
         }
       ],
-      "state": "open",
+      "state": "closed",
       "title": "feat: Refactor task_size to support symlinked zarr stores and improve tqdm",
       "user": "MeraX"
     },
@@ -22345,6 +22351,11 @@
           "state": "COMMENTED",
           "submitted_at": "2026-10-23T10:11:13+00:00",
           "user": "Zappandy"
+        },
+        {
+          "state": "APPROVED",
+          "submitted_at": "2026-10-26T11:04:30+00:00",
+          "user": "reuterbal"
         }
       ],
       "state": "open",
@@ -22406,7 +22417,7 @@
       "user": "reuterbal"
     },
     "803": {
-      "additions": 8,
+      "additions": 13,
       "changed_files": 2,
       "closed_at": null,
       "coauthor_email_hashes": [],
@@ -22438,7 +22449,13 @@
       "merged": false,
       "merged_at": null,
       "number": 805,
-      "reviews": [],
+      "reviews": [
+        {
+          "state": "COMMENTED",
+          "submitted_at": "2026-10-26T11:19:20+00:00",
+          "user": "copilot-pull-request-reviewer[bot]"
+        }
+      ],
       "state": "open",
       "title": "fix(grib-index): support accumulation intervals with a basetime",
       "user": "frazane"
